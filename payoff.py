@@ -1,20 +1,25 @@
 
 
 class PayOffCalculator:
-    def __init__(self, weights):
+    def __init__(self, weights, probability):
         """
         Initialize the PayOff class with a dictionary of weights.
         :param weights: A dictionary where keys are aspect names and values are their weights.
         """
         self.weights = weights
+        self.probability = probability
 
     def calculate_payoff(self, **aspects):
         """
         Calculate the payoff based on the provided aspects and their weights.
         :param aspects: Keyword arguments representing aspect values.
+        Each key should correspond to a weight in the weights dictionary.
+        :param probability: Probability of the trade profile being selected.
+        The probability is used to scale the final payoff.
+        The probability should be between 0 and 1.
         :return: The calculated payoff.
         """
-        return sum(self.weights.get(key, 0) * value for key, value in aspects.items())
+        return sum(self.weights.get(key, 0) * value for key, value in aspects.items()) * self.probability
 
     def __str__(self):
         return f"PayOff(weights={self.weights})"

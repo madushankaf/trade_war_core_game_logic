@@ -162,6 +162,7 @@ def solve_mixed_strategy_indifference_col_player_only_general(player2_payoffs):
 
 
 
+
 if __name__ == "__main__":
     # Example usage
     usa = Player("USA")
