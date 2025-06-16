@@ -109,13 +109,40 @@ def generate_payoff_matrix_for_given_trade_profile_and_stategy_outcome( outcome:
 
 
 
+def calculate_total_probability_of_a_given_action(action: str, trade_profile: TradeProfile):
+    """
+    Calculates the total probability of a given action in the context of a trade profile.
+    
+    Arguments:
+        action: The action for which the probability is to be calculated.
+        trade_profile: TradeProfile object representing the trade profile.
+    
+    Returns:
+        total_probability: The total probability of the given action.
+    """
+    # Placeholder for actual implementation
+    # This function should calculate the total probability based on the trade profile and action.
+    # For now, we'll just return the prior probability of the trade profile.
+
+    return trade_profile.probability
+
+def calculate_total_probability_of_a_given_trade_profile(trade_profile: TradeProfile, action: str):
+    """
+    Calculates the total probability of a given trade profile.
+    """
+
+    prior_probability = trade_profile.probability
+
+    return trade_profile.calculate_total_probability()
+
+
 if __name__ == "__main__":
     # Example usage
     row_player_payoffs = np.array([[133.15, 84.7], [-86.7, 33.35]])
     col_player_payoffs = np.array([[-131.55, -86.7], [84.7, -56.65]])
 
-    row_strategy = solve_mixed_strategy_indifference_general(row_player_payoffs, player='row')
-    col_strategy = solve_mixed_strategy_indifference_general(col_player_payoffs, player='col')
+    col_mix = solve_mixed_strategy_indifference_general(row_player_payoffs, player='row')
+    row_mix = solve_mixed_strategy_indifference_general(col_player_payoffs, player='col')
 
     # print(f"Row Player Mixed Strategy: {row_strategy}")
     # print(f"Column Player Mixed Strategy: {col_strategy}")
