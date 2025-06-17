@@ -168,16 +168,19 @@ def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_m
     """
     Get the security-level (min-max) response to an opponent's strategy.
     """
-    if moves is None:
-        return None
+
 
     all_payoffs = {}
     for move in moves:
         payoff = calculate_payoff(move, opponent_move, payoff_matrix)
-        all_payoffs[move] = payoff
+        print(f"Payoff for {move.get('name', '')}: {payoff}")
+        all_payoffs[move.get('name', '')] = payoff
+    
+    print(f"All Payoffs: {all_payoffs}")
     
     # Find the worst payoff
     worst_payoff = min(all_payoffs.values())   
+    print(f"Worst Payoff: {worst_payoff}")
     worst_case_threshold = worst_payoff + 1
     worst_case_moves = {
         move: payoff for move, payoff in all_payoffs.items()

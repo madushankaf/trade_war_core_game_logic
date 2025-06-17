@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference
+from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_response
 
 # Test moves for pure strategies
 @pytest.fixture
@@ -489,5 +489,118 @@ def test_get_the_next_move_based_on_mixed_strartegy_probability_indifference():
     print(next_move)
     assert next_move is not None
     #assert next_move in [move['name'] for move in moves]  # Next move should be one of our defined moves
+ 
+def test_get_security_level_response():
+    """Test getting security level response"""
+    # Define computer moves
+    moves = [
+        {
+            "name": "open_dialogue",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'computer'
+        },
+        {
+            "name": "raise_tariffs",
+            "type": "defective",
+            "probability": 1.0,
+            'player': 'computer'
+        },
+        {
+            "name": "wait_and_see",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'computer'
+        }
+    ]
+
+    # Define user moves
+    user_moves = [
+        {
+            "name": "open_dialogue",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'user'
+        },
+        {
+            "name": "raise_tariffs",
+            "type": "defective",
+            "probability": 1.0,
+            'player': 'user'
+        },
+        {
+            "name": "wait_and_see",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'user'
+        }
+    ]
+
+    # Define payoff matrix
+    test_payoff_matrix = [
+        {
+            "user_move_name": "open_dialogue",
+            "computer_move_name": "open_dialogue",
+            "payoff": {"user": 3, "computer": 1}
+        },
+        {
+            "user_move_name": "open_dialogue",
+            "computer_move_name": "raise_tariffs",
+            "payoff": {"user": 1, "computer": 3}
+        },
+        {
+            "user_move_name": "open_dialogue",
+            "computer_move_name": "wait_and_see",
+            "payoff": {"user": 2, "computer": 2}
+        },
+        {
+            "user_move_name": "raise_tariffs",
+            "computer_move_name": "open_dialogue",
+            "payoff": {"user": 1, "computer": 3}
+        },
+        {
+            "user_move_name": "raise_tariffs",
+            "computer_move_name": "raise_tariffs",
+            "payoff": {"user": 3, "computer": 1}
+        },
+        {
+            "user_move_name": "raise_tariffs",
+            "computer_move_name": "wait_and_see",
+            "payoff": {"user": 0, "computer": 4}
+        },
+        {
+            "user_move_name": "wait_and_see",
+            "computer_move_name": "open_dialogue",
+            "payoff": {"user": 2, "computer": 2}
+        },
+        {
+            "user_move_name": "wait_and_see",
+            "computer_move_name": "raise_tariffs",
+            "payoff": {"user": 4, "computer": 0}
+        },
+        {
+            "user_move_name": "wait_and_see",
+            "computer_move_name": "wait_and_see",
+            "payoff": {"user": 1, "computer": 1}
+        }
+    ]
+
+ 
+    
+    security_response = get_security_level_response(
+        moves=moves,
+        opponent_move={
+            "name": "wait_and_see",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'user'
+        },
+        payoff_matrix=test_payoff_matrix
+    )
+    
+    print("Security Level Response:")
+    print(security_response)
+    assert security_response is not None
+    assert security_response in [move['name'] for move in user_moves]  # Response should be one of our defined moves
  
 
