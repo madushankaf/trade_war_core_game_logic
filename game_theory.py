@@ -185,7 +185,7 @@ def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_m
     worst_case_moves = {
         move: payoff for move, payoff in all_payoffs.items()
         if payoff <= worst_case_threshold
-    }
+   }
 
     return max(worst_case_moves, key=worst_case_moves.get)
 
@@ -245,7 +245,7 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
         computer_moves: List[dict],
         user_moves: List[dict],
         payoff_matrix: List[dict],
-        state: dict) -> np.ndarray:
+        state: dict) -> dict:
     """
     Implements a mixed strategy based on probability indifference principle,
     where the strategy makes the opponent indifferent between their pure strategies.
@@ -254,11 +254,12 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
         - state.equalizer_strategy    (current equalizer strategy or None)
         - state.last_strategy_update  (last round index when strategy was updated)
         - state.round_idx            (current round index)
+        - state.generated_mixed_moves_array
 
     Returns:
         np.ndarray: A pure strategy sampled from the current equalizer strategy distribution
     """
-    if state['equalizer_strategy'] is None or ( state['round_idx'] - state['last_strategy_update'] > 10):
+    if state['generated_mixed_moves_array'] is None or state['equalizer_strategy'] is None or ( state['round_idx'] - state['last_strategy_update'] > 10):
 
         computer_payoff_matrix = np.array([[calculate_payoff(cs, us, payoff_matrix) for us in user_moves] for cs in computer_moves])
         user_payoff_matrix = np.array([[calculate_payoff(us, cs, payoff_matrix) for cs in computer_moves] for us in user_moves])   
@@ -288,9 +289,18 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
             
         state['last_strategy_update'] = state['round_idx']
 
-    mixed_strategies = [move for move in computer_moves if move['probability'] is not None and move['probability'] > 0]
+        mixed_strategies = [move for move in computer_moves if move['probability'] is not None and move['probability'] > 0]
 
-    return np.random.choice(mixed_strategies, size= (PHASE_3_START - PHASE_1_START), p=[move['probability'] for move in mixed_strategies])
+        state['generated_mixed_moves_array'] = np.random.choice(mixed_strategies, size= (PHASE_3_END - PHASE_2_START), p=[move['probability'] for move in mixed_strategies])
+        if len(state['generated_mixed_moves_array']) == 0 or state['generated_mixed_moves_array'] is None:
+            raise ValueError("No mixed strategies found")
+    
+    shift = state['round_idx'] * 0.2
+    indices = np.arange(len(state['generated_mixed_moves_array'])) - shift 
+    probabilities = np.exp(-np.maximum(0, indices) * 0.5)  # adjust 0.5 to control decay rate
+    probabilities = probabilities / probabilities.sum()
+
+    return np.random.choice(state['generated_mixed_moves_array'], p=probabilities)
 
     # Fallback handled inside refresh_equaliser_if_needed
 
@@ -343,56 +353,82 @@ def get_a_random_move(moves: List[dict]) -> Optional[dict]:
         return None
     return np.random.choice(moves)
 
+def get_copy_cat_move(moves: List[dict], last_computer_move: dict) -> Optional[dict]:
+    """
+    Get the copy cat move from the available strategies.
+    """
+    last_computer_move_name = last_computer_move['name']
+    matching_move = next((move for move in moves if move['name'] == last_computer_move_name), None)
+    if matching_move:
+        return matching_move
+    else:
+        return get_a_random_move(moves)
+
 def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dict, round_idx: int) -> Optional[dict]:
     """
     Get the next move based on strategy settings.
     """
     if game['user_strategy_settings'] is None:
-        return get_a_random_move(game['user_moves'])
+        raise ValueError("User strategy settings are not set")
     
     user_strategy_settings = game['user_strategy_settings']
     user_moves = game['user_moves']
+    if user_moves is None:
+        raise ValueError("User moves are not set")
+    if len(user_moves) == 0:
+        raise ValueError("User moves are empty")
+    cooperative_moves = [move for move in user_moves if move['type'] == 'cooperative']
+    defective_moves = [move for move in user_moves if move['type'] == 'defective']
+    if user_strategy_settings['cooperation_start'] is None:
+        user_strategy_settings['cooperation_start'] = 0
+
+    if user_strategy_settings['strategy'] == 'mixed':
+        if user_strategy_settings['mixed_strategy_array'] is None:            
+            user_strategy_settings['mixed_strategy_array'] = np.random.choice(user_moves, size = (PHASE_3_END - PHASE_1_START), p=[move['probability'] for move in user_moves])
+
     if round_idx == 0:
-        first_move = user_strategy_settings['first_move']
-        if first_move is not None:
-            return user_moves[first_move]
-        
-        first_move_setting = user_strategy_settings['first_move_setting']
-     
-        if first_move_setting == 'cooperate':
-            return get_a_random_move(user_strategy_settings['cooperative_moves'])
-        elif first_move_setting == 'defect':
-            return get_a_random_move(user_strategy_settings['defective_moves'])
-        else:
-            return get_a_random_move(user_moves)
+        first_move_name = user_strategy_settings['first_move']
+        if first_move_name is not None:
+            matching_move = next((move for move in user_moves if move['name'] == first_move_name), None)
+            if matching_move:
+                return matching_move
+            else:
+                return None
+        return None
+          
     else:
         if user_strategy_settings['strategy'] == 'copy_cat':
-            return last_computer_move
+            return get_copy_cat_move(user_moves, last_computer_move)
         elif user_strategy_settings['strategy'] == 'tit_for_tat':
             if round_idx < user_strategy_settings['cooperation_start']:
-                return get_a_random_move(user_strategy_settings['cooperative_moves'])
+                return get_a_random_move(cooperative_moves)
             else:
-                return last_computer_move
+                return get_copy_cat_move(user_moves, last_computer_move)
         elif user_strategy_settings['strategy'] == 'grim_trigger':
             if round_idx < user_strategy_settings['cooperation_start']:
-                return get_a_random_move(user_strategy_settings['cooperative_moves'])
+                return get_a_random_move(cooperative_moves)
             if is_cooperative(last_computer_move):
-                return get_a_random_move(user_strategy_settings['defective_moves'])
+                return get_a_random_move(defective_moves)
             else:
-                return get_a_random_move(user_strategy_settings['cooperative_moves'])
+                return get_a_random_move(cooperative_moves)
         elif user_strategy_settings['strategy'] == 'random':
             return get_a_random_move(user_moves)
         elif user_strategy_settings['strategy'] == 'mixed':
-            probabilities = user_strategy_settings['probabilities']
-            return np.random.choice(user_moves, size = (PHASE_3_END - PHASE_1_START), p=[probabilities[move['name']] for move in user_moves])
+            shift = round_idx * 0.2
+            indices = np.arange(len(user_strategy_settings['mixed_strategy_array'])) - shift
+            probabilities = np.exp(-np.maximum(0, indices) * 0.5) 
+            probabilities = probabilities / probabilities.sum()
+            return np.random.choice(user_strategy_settings['mixed_strategy_array'], p=probabilities)
         else:
-            return get_a_random_move(user_moves)
+            raise ValueError(f"Unknown strategy or strategy is not set: {user_strategy_settings['strategy']}")
 
 def is_cooperative(move: dict) -> bool:
     """
     Check if the move is cooperative.
     """
-    return move['type'] == 'cooperate'
+    print(f"Checking if move {move['name']} is cooperative")
+    print(f"Move type: {move['type']}")
+    return move['type'] == 'cooperative'
 
 def find_nash_equilibrium_strategy(moves: List[dict], opponent_moves: List[dict], payoff_matrix: List[dict]) -> dict:
     """
@@ -487,7 +523,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
     user_dominant = check_dominant_move(game['user_moves'], user_move, game['payoff_matrix'])
     
     if user_dominant and user_move == user_dominant:
-        computer_move = get_security_level_response(game['computer_moves'], user_dominant, game['payoff_matrix'])
+        computer_move = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'], game.get('state', {}))
         if computer_move is None:
             computer_move = get_a_random_move(game['computer_moves'])
         return user_move, computer_move
@@ -515,7 +551,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
                 game['computer_moves'],
                 game['user_moves'],
                 game['payoff_matrix'],
-                game.get('state', {}),
+                game['state'],
                 user_support=None        # plug in your support rule
             )
         if computer_move is None:

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_response
+from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_response, get_copy_cat_move, get_next_move_based_on_strategy_settings
 
 # Test moves for pure strategies
 @pytest.fixture
@@ -477,8 +477,9 @@ def test_get_the_next_move_based_on_mixed_strartegy_probability_indifference():
    
     state = {}
     state['equalizer_strategy'] = None
-    state['round_idx'] = 0
+    state['round_idx'] = 2
     state['last_strategy_update'] = 0
+    state['generated_mixed_moves_array'] = None
     next_move = get_the_next_move_based_on_mixed_strartegy_probability_indifference(
         computer_moves=moves,
         user_moves=user_moves,
@@ -488,7 +489,7 @@ def test_get_the_next_move_based_on_mixed_strartegy_probability_indifference():
     print("Next Move:")
     print(next_move)
     assert next_move is not None
-    #assert next_move in [move['name'] for move in moves]  # Next move should be one of our defined moves
+    assert next_move['name'] in [move['name'] for move in moves]  # Next move should be one of our defined moves
  
 def test_get_security_level_response():
     """Test getting security level response"""
@@ -603,4 +604,146 @@ def test_get_security_level_response():
     assert security_response is not None
     assert security_response in [move['name'] for move in user_moves]  # Response should be one of our defined moves
  
+def test_get_copy_cat_move():
+    """Test getting copy cat move"""
+    # Define test moves
+    moves = [
+        {
+            "name": "open_dialogue",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'user'
+        },
+        {
+            "name": "raise_tariffs",
+            "type": "defective",
+            "probability": 1.0,
+            'player': 'user'
+        },
+        {
+            "name": "wait_and_see",
+            "type": "cooperative",
+            "probability": 1.0,
+            'player': 'user'
+        }
+    ]
+
+    # Test case 1: Last computer move exists in moves
+    last_computer_move = {
+        "name": "open_dialogue",
+        "type": "cooperative",
+        "probability": 1.0,
+        'player': 'computer'
+    }
+    copy_cat_move = get_copy_cat_move(moves, last_computer_move)
+    assert copy_cat_move is not None
+    assert copy_cat_move['name'] == "open_dialogue"
+    assert copy_cat_move['type'] == "cooperative"
+
+    # Test case 2: Last computer move doesn't exist in moves
+    last_computer_move = {
+        "name": "non_existent_move",
+        "type": "cooperative",
+        "probability": 1.0,
+        'player': 'computer'
+    }
+    copy_cat_move = get_copy_cat_move(moves, last_computer_move)
+    assert copy_cat_move is not None
+    assert copy_cat_move in moves  # Should return a random move from the list
+
+    # Test case 3: Empty moves list
+    empty_moves = []
+    copy_cat_move = get_copy_cat_move(empty_moves, last_computer_move)
+    assert copy_cat_move is None  # get_a_random_move returns None for empty list
+
+def test_get_next_move_based_on_strategy_settings():
+    """Test getting next move based on strategy settings"""
+    # Build the game object
+    game = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.6,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'user'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.1,
+                'player': 'user'
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'copy_cat',  # or 'tit_for_tat'
+            'first_move': 'open_dialogue',
+            'cooperation_start': 2,
+            'mixed_strategy_array': None
+        }
+    }
+
+    # Test case 1: First round (round_idx = 0)
+    last_computer_move = {
+        "name": "wait_and_see",
+        "type": "cooperative",
+        "probability": 1.0,
+        'player': 'computer'
+    }
+    next_move = get_next_move_based_on_strategy_settings(game, last_computer_move, 0)
+    print("First round move:")
+    print(next_move)
+    assert next_move is not None
+    assert next_move['name'] == 'open_dialogue'  # Should return first_move from settings
+
+    # Test case 2: Later round with copy_cat strategy
+    next_move = get_next_move_based_on_strategy_settings(game, last_computer_move, 1)
+    print("Copy cat move:")
+    print(next_move)
+    assert next_move is not None
+    assert next_move['name'] == 'wait_and_see'  # Should copy last computer move
+
+    # # Test case 3: Later round with tit_for_tat strategy
+    game['user_strategy_settings']['strategy'] = 'tit_for_tat'
+    next_move = get_next_move_based_on_strategy_settings(game, last_computer_move, 3)
+    print("Tit for tat move:")
+    print(next_move)
+    assert next_move is not None
+    assert next_move['name'] == 'wait_and_see'  # Should copy last computer move
+
+    # Test case 3: Later round with grim trigger strategy
+    game['user_strategy_settings']['strategy'] = 'grim_trigger'
+    next_move = get_next_move_based_on_strategy_settings(game, last_computer_move, 3)
+    print("Grim trigger move:")
+    print(next_move)
+    assert next_move is not None
+    assert next_move['name'] == 'raise_tariffs'  # Should copy last computer move
+
+   # Test case 4: unknown_strategy - should raise ValueError
+    game['user_strategy_settings']['strategy'] = 'unknown_strategy'
+    with pytest.raises(ValueError):
+        get_next_move_based_on_strategy_settings(game, last_computer_move, 1)
+    
+    # Test case 5: mixed strategy 
+    game['user_strategy_settings']['strategy'] = 'mixed'
+    next_move = get_next_move_based_on_strategy_settings(game, last_computer_move, 1)
+    print("Mixed move:")
+    print(next_move)
+    assert next_move is not None
+    assert next_move in game['user_moves']  
+
+    # Test case 6: No strategy settings - should raise ValueError
+    game['user_strategy_settings'] = None
+    with pytest.raises(ValueError):
+        get_next_move_based_on_strategy_settings(game, last_computer_move, 1)
+
+    # Test case 7: No user moves - should raise ValueError
+    game['user_moves'] = None
+    with pytest.raises(ValueError):
+        get_next_move_based_on_strategy_settings(game, last_computer_move, 1)
 
