@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_response, get_copy_cat_move, get_next_move_based_on_strategy_settings
+from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_response, get_copy_cat_move, get_next_move_based_on_strategy_settings, play_game_round, play_full_game
 
 # Test moves for pure strategies
 @pytest.fixture
@@ -602,7 +602,7 @@ def test_get_security_level_response():
     print("Security Level Response:")
     print(security_response)
     assert security_response is not None
-    assert security_response in [move['name'] for move in user_moves]  # Response should be one of our defined moves
+    assert security_response['name'] in [move['name'] for move in user_moves]  # Response should be one of our defined moves
  
 def test_get_copy_cat_move():
     """Test getting copy cat move"""
@@ -746,4 +746,792 @@ def test_get_next_move_based_on_strategy_settings():
     game['user_moves'] = None
     with pytest.raises(ValueError):
         get_next_move_based_on_strategy_settings(game, last_computer_move, 1)
+
+def test_play_game_round():
+    """Test the play_game_round method with different game configurations"""
+    
+    # Test game object with copy_cat strategy
+    test_game_copy_cat = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'user'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'computer'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 4}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 4, "computer": 1}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 3, "computer": 1}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 3}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'copy_cat',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 2,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    # Test case 1: First round (round 0) with copy_cat strategy
+    test_game_copy_cat['state']['round_idx'] = 0
+    user_move, computer_move = play_game_round(test_game_copy_cat, 0)
+    
+    print(f"Round 0 - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    assert user_move['name'] in [move['name'] for move in test_game_copy_cat['user_moves']]
+    assert computer_move['name'] in [move['name'] for move in test_game_copy_cat['computer_moves']]
+    assert user_move['name'] == 'open_dialogue'  # Should return first_move from settings
+    
+    # Test case 2: Later round with copy_cat strategy
+    test_game_copy_cat['state']['round_idx'] = 1
+    user_move, computer_move = play_game_round(test_game_copy_cat, 1)
+    
+    print(f"Round 1 - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    assert user_move['name'] in [move['name'] for move in test_game_copy_cat['user_moves']]
+    assert computer_move['name'] in [move['name'] for move in test_game_copy_cat['computer_moves']]
+    
+    # Test case 3: Phase 1 (Nash Equilibrium) - rounds 0-15
+    test_game_copy_cat['state']['round_idx'] = 5
+    user_move, computer_move = play_game_round(test_game_copy_cat, 5)
+    
+    print(f"Phase 1 (Round 5) - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    
+    # Test case 4: Phase 2 (Greedy Response) - rounds 16-100
+    test_game_copy_cat['state']['round_idx'] = 20
+    user_move, computer_move = play_game_round(test_game_copy_cat, 20)
+    
+    print(f"Phase 2 (Round 20) - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    
+    # Test case 5: Phase 3 (Mixed Strategy) - rounds 101-200
+    test_game_copy_cat['state']['round_idx'] = 110
+    user_move, computer_move = play_game_round(test_game_copy_cat, 110)
+    
+    print(f"Phase 3 (Round 110) - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    
+    # Test case 6: Tit for tat strategy
+    test_game_tit_for_tat = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.5,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.5,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.5,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.5,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 0, "computer": 5}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 5, "computer": 0}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'tit_for_tat',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 3,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    # Test tit_for_tat before cooperation_start
+    test_game_tit_for_tat['state']['round_idx'] = 1
+    user_move, computer_move = play_game_round(test_game_tit_for_tat, 1)
+    
+    print(f"Tit for Tat (Round 1) - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    assert user_move['type'] == 'cooperative'  # Should be cooperative before cooperation_start
+    
+    # Test tit_for_tat after cooperation_start
+    test_game_tit_for_tat['state']['round_idx'] = 5
+    user_move, computer_move = play_game_round(test_game_tit_for_tat, 5)
+    
+    print(f"Tit for Tat (Round 5) - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    
+    # Test case 7: Mixed strategy
+    test_game_mixed = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'user'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'computer'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 4}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 4, "computer": 1}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 3, "computer": 1}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 3}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'mixed',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 2,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    # Test mixed strategy
+    test_game_mixed['state']['round_idx'] = 1
+    user_move, computer_move = play_game_round(test_game_mixed, 1)
+    
+    print(f"Mixed Strategy (Round 1) - User move: {user_move['name']}, Computer move: {computer_move['name']}")
+    
+    assert user_move is not None
+    assert computer_move is not None
+    assert user_move['name'] in [move['name'] for move in test_game_mixed['user_moves']]
+    assert computer_move['name'] in [move['name'] for move in test_game_mixed['computer_moves']]
+    
+    # Test case 8: Multiple rounds to test strategy evolution
+    print("\nTesting multiple rounds with copy_cat strategy:")
+    moves_history = []
+    
+    for round_idx in range(5):
+        test_game_copy_cat['state']['round_idx'] = round_idx
+        user_move, computer_move = play_game_round(test_game_copy_cat, round_idx)
+        
+        moves_history.append({
+            'round': round_idx,
+            'user_move': user_move['name'],
+            'computer_move': computer_move['name']
+        })
+        
+        print(f"Round {round_idx}: User={user_move['name']}, Computer={computer_move['name']}")
+        
+        assert user_move is not None
+        assert computer_move is not None
+    
+    print(f"Move history: {moves_history}")
+    assert len(moves_history) == 5
+    
+    print("\nAll play_game_round tests passed successfully!")
+
+def test_play_full_game():
+    """Test the play_full_game method with different game configurations"""
+    
+    # Test game object with copy_cat strategy
+    test_game_copy_cat = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'user'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'computer'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 4}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 4, "computer": 1}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 3, "computer": 1}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 3}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'copy_cat',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 2,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    # Test case 1: Play full game with copy_cat strategy
+    print("\n=== Testing play_full_game with copy_cat strategy ===")
+    result = play_full_game(test_game_copy_cat)
+    
+    print(f"Final user payoff: {result['final_user_payoff']}")
+    print(f"Final computer payoff: {result['final_computer_payoff']}")
+    
+    assert 'final_user_payoff' in result
+    assert 'final_computer_payoff' in result
+    assert isinstance(result['final_user_payoff'], (int, float))
+    assert isinstance(result['final_computer_payoff'], (int, float))
+    assert result['final_user_payoff'] >= 0
+    assert result['final_computer_payoff'] >= 0
+    
+    # Test case 2: Play full game with tit_for_tat strategy
+    test_game_tit_for_tat = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.5,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.5,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.5,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.5,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 0, "computer": 5}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 5, "computer": 0}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'tit_for_tat',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 3,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    print("\n=== Testing play_full_game with tit_for_tat strategy ===")
+    result_tit_for_tat = play_full_game(test_game_tit_for_tat)
+    
+    print(f"Final user payoff: {result_tit_for_tat['final_user_payoff']}")
+    print(f"Final computer payoff: {result_tit_for_tat['final_computer_payoff']}")
+    
+    assert 'final_user_payoff' in result_tit_for_tat
+    assert 'final_computer_payoff' in result_tit_for_tat
+    assert isinstance(result_tit_for_tat['final_user_payoff'], (int, float))
+    assert isinstance(result_tit_for_tat['final_computer_payoff'], (int, float))
+    assert result_tit_for_tat['final_user_payoff'] >= 0
+    assert result_tit_for_tat['final_computer_payoff'] >= 0
+    
+    # Test case 3: Play full game with mixed strategy
+    test_game_mixed = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'user'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.4,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.3,
+                'player': 'computer'
+            },
+            {
+                "name": "wait_and_see",
+                "type": "cooperative",
+                "probability": 0.3,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 4}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 4, "computer": 1}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 3, "computer": 1}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 2, "computer": 2}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 3}
+            },
+            {
+                "user_move_name": "wait_and_see",
+                "computer_move_name": "wait_and_see",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'mixed',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 2,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    print("\n=== Testing play_full_game with mixed strategy ===")
+    result_mixed = play_full_game(test_game_mixed)
+    
+    print(f"Final user payoff: {result_mixed['final_user_payoff']}")
+    print(f"Final computer payoff: {result_mixed['final_computer_payoff']}")
+    
+    assert 'final_user_payoff' in result_mixed
+    assert 'final_computer_payoff' in result_mixed
+    assert isinstance(result_mixed['final_user_payoff'], (int, float))
+    assert isinstance(result_mixed['final_computer_payoff'], (int, float))
+    assert result_mixed['final_user_payoff'] >= 0
+    assert result_mixed['final_computer_payoff'] >= 0
+    
+    # Test case 4: Compare payoffs across different strategies
+    print("\n=== Comparing payoffs across strategies ===")
+    print(f"Copy Cat - User: {result['final_user_payoff']:.2f}, Computer: {result['final_computer_payoff']:.2f}")
+    print(f"Tit for Tat - User: {result_tit_for_tat['final_user_payoff']:.2f}, Computer: {result_tit_for_tat['final_computer_payoff']:.2f}")
+    print(f"Mixed - User: {result_mixed['final_user_payoff']:.2f}, Computer: {result_mixed['final_computer_payoff']:.2f}")
+    
+    # Test case 5: Test with random strategy
+    test_game_random = {
+        'user_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.5,
+                'player': 'user'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.5,
+                'player': 'user'
+            }
+        ],
+        'computer_moves': [
+            {
+                "name": "open_dialogue",
+                "type": "cooperative",
+                "probability": 0.5,
+                'player': 'computer'
+            },
+            {
+                "name": "raise_tariffs",
+                "type": "defective",
+                "probability": 0.5,
+                'player': 'computer'
+            }
+        ],
+        'payoff_matrix': [
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 3, "computer": 3}
+            },
+            {
+                "user_move_name": "open_dialogue",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 0, "computer": 5}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "open_dialogue",
+                "payoff": {"user": 5, "computer": 0}
+            },
+            {
+                "user_move_name": "raise_tariffs",
+                "computer_move_name": "raise_tariffs",
+                "payoff": {"user": 1, "computer": 1}
+            }
+        ],
+        'user_strategy_settings': {
+            'strategy': 'random',
+            'first_move': 'open_dialogue',
+            'cooperation_start': 3,
+            'mixed_strategy_array': None
+        },
+        'state': {
+            'equalizer_strategy': None,
+            'round_idx': 0,
+            'last_strategy_update': 0,
+            'generated_mixed_moves_array': None,
+            'last_computer_move': None
+        }
+    }
+    
+    print("\n=== Testing play_full_game with random strategy ===")
+    result_random = play_full_game(test_game_random)
+    
+    print(f"Final user payoff: {result_random['final_user_payoff']}")
+    print(f"Final computer payoff: {result_random['final_computer_payoff']}")
+    
+    assert 'final_user_payoff' in result_random
+    assert 'final_computer_payoff' in result_random
+    assert isinstance(result_random['final_user_payoff'], (int, float))
+    assert isinstance(result_random['final_computer_payoff'], (int, float))
+    assert result_random['final_user_payoff'] >= 0
+    assert result_random['final_computer_payoff'] >= 0
+    
+    # print("\nAll play_full_game tests passed successfully!")
 

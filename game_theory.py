@@ -94,7 +94,7 @@ def is_the_move_with_the_better_payoff(move1: dict, move2: dict, opponent_move: 
     # Move1 is better if it has a higher payoff
     return payoff1 > payoff2
 
-def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict]) -> float:
+def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict], is_noise_added: bool = False) -> float:
     """
     Calculate the expected payoff for a move against a specific opponent move.
     
@@ -148,7 +148,8 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict])
         
     noise = 0.0
     #Always add noise, but ensure final payoff is never negative
-    noise = np.random.normal(0, 0.1)  # Small random noise
+    if is_noise_added:
+        noise = np.random.normal(0, 0.1)  # Small random noise
     print(f"\nTotal payoff before noise: {move_payoff}")
     print(f"Generated noise: {noise}")
     
@@ -186,8 +187,11 @@ def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_m
         move: payoff for move, payoff in all_payoffs.items()
         if payoff <= worst_case_threshold
    }
-
-    return max(worst_case_moves, key=worst_case_moves.get)
+    
+    worst_case_move = max(worst_case_moves, key=worst_case_moves.get)
+    for move in moves:
+        if move['name'] == worst_case_move:
+            return move
 
 def solve_mixed_strategy_indifference_general(payoffs, player='row', tolerance=0.1):
     """
@@ -357,6 +361,9 @@ def get_copy_cat_move(moves: List[dict], last_computer_move: dict) -> Optional[d
     """
     Get the copy cat move from the available strategies.
     """
+    if last_computer_move is None:
+        return get_a_random_move(moves)
+    
     last_computer_move_name = last_computer_move['name']
     matching_move = next((move for move in moves if move['name'] == last_computer_move_name), None)
     if matching_move:
@@ -391,7 +398,9 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
         if first_move_name is not None:
             matching_move = next((move for move in user_moves if move['name'] == first_move_name), None)
             if matching_move:
-                return matching_move
+                for move in user_moves:
+                    if move['name'] == first_move_name:
+                        return move
             else:
                 return None
         return None
@@ -406,6 +415,8 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
                 return get_copy_cat_move(user_moves, last_computer_move)
         elif user_strategy_settings['strategy'] == 'grim_trigger':
             if round_idx < user_strategy_settings['cooperation_start']:
+                return get_a_random_move(cooperative_moves)
+            if last_computer_move is None:
                 return get_a_random_move(cooperative_moves)
             if is_cooperative(last_computer_move):
                 return get_a_random_move(defective_moves)
@@ -514,18 +525,29 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
     Play a single round of the game.
     Returns the user move and computer move for the round.
     """
-    user_move = get_next_move_based_on_strategy_settings(game, round_idx)
+    if round_idx == 0:
+        game['state']['last_computer_move'] = None
+        game['state']['round_idx'] = 0
+        game['state']['last_strategy_update'] = 0
+        game['state']['generated_mixed_moves_array'] = None
+        game['state']['equalizer_strategy'] = None
+
+        
+    user_move = get_next_move_based_on_strategy_settings(game, game['state']['last_computer_move'], round_idx)
     if user_move is None:
         user_move = get_a_random_move(game['user_moves'])
 
     # Check if current user_move is a dominant strategy
     #computer_dominant = check_dominant_strategy(game['computer_moves'], game['user_moves'], user_move)
     user_dominant = check_dominant_move(game['user_moves'], user_move, game['payoff_matrix'])
+
     
     if user_dominant and user_move == user_dominant:
-        computer_move = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'], game.get('state', {}))
+        computer_move = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
         if computer_move is None:
             computer_move = get_a_random_move(game['computer_moves'])
+        game['state']['last_computer_move'] = computer_move
+        game['state']['round_idx'] = round_idx
         return user_move, computer_move
 
     if PHASE_1_START <= round_idx <= PHASE_1_END:  # Phase 1: Nash Equilibrium
@@ -535,7 +557,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
                 game['computer_moves'], game['user_moves'], game['payoff_matrix']),
             game['computer_moves'])
         if computer_move is None:
-            computer_move = find_best_response_using_epsilon_greedy(game)
+            computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, game['payoff_matrix'])
         if computer_move is None:
             computer_move = get_a_random_move(game['computer_moves'])
 
@@ -557,20 +579,33 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
         if computer_move is None:
             computer_move = get_a_random_move(game['computer_moves'])
 
+    game['state']['last_computer_move'] = computer_move
+    game['state']['round_idx'] = round_idx
     return user_move, computer_move
 
-def play_full_game(game: dict) -> Tuple[List[Tuple], dict, dict]:
+def play_full_game(game: dict) -> dict:
     """
     Play a complete game and return the moves history and dominant strategies.
     """
-    moves = GameMoves()
+    iteration_moves = GameMoves()
     
     for i in range(PHASE_3_END):
         user_move, computer_move = play_game_round(game, i)
-        moves.add_moves(user_move, computer_move)
+        if user_move is None:
+            continue
+        if computer_move is None:
+            continue
+        iteration_moves.add_moves(user_move, computer_move)
     
-    # Get final dominant strategies
-    user_dominant = check_dominant_move(game['user_moves'], game['computer_moves'], game['payoff_matrix'])
-    computer_dominant = check_dominant_move(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
-    
-    return moves.get_moves(), user_dominant, computer_dominant 
+    final_user_payoff = 0
+    final_computer_payoff = 0
+    for user_move, computer_move in iteration_moves.get_moves():
+        user_payoff = calculate_payoff(user_move, computer_move, game['payoff_matrix'], is_noise_added=True)
+        computer_payoff = calculate_payoff(computer_move, user_move, game['payoff_matrix'], is_noise_added=True)
+        final_user_payoff += user_payoff
+        final_computer_payoff += computer_payoff
+
+    return {
+        'final_user_payoff': final_user_payoff,
+        'final_computer_payoff': final_computer_payoff
+    },iteration_moves 

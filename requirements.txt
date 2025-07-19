@@ -1,2 +1,16 @@
+# Web framework and CORS
 flask==3.0.2
-flask-cors==4.0.0 
+flask-cors==4.0.0
+
+# Scientific computing and optimization
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Game theory library
+nashpy>=0.0.21
+
+# Testing framework
+pytest>=6.0.0
+
+# Type hints (usually included with Python 3.5+, but explicitly listed for clarity)
+typing-extensions>=4.0.0 
