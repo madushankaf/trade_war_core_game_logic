@@ -1239,18 +1239,18 @@ def test_play_full_game():
     # Test case 1: Play full game with copy_cat strategy
     print("\n=== Testing play_full_game with copy_cat strategy ===")
     result = play_full_game(test_game_copy_cat)
+    final_payoff, iteration_moves = result
+    print(f"Final user payoff: {final_payoff['final_user_payoff']}")
+    print(f"Final computer payoff: {final_payoff['final_computer_payoff']}")
     
-    print(f"Final user payoff: {result['final_user_payoff']}")
-    print(f"Final computer payoff: {result['final_computer_payoff']}")
+    assert 'final_user_payoff' in final_payoff
+    assert 'final_computer_payoff' in final_payoff
+    assert isinstance(final_payoff['final_user_payoff'], (int, float))
+    assert isinstance(final_payoff['final_computer_payoff'], (int, float))
+    assert final_payoff['final_user_payoff'] >= 0
+    assert final_payoff['final_computer_payoff'] >= 0
     
-    assert 'final_user_payoff' in result
-    assert 'final_computer_payoff' in result
-    assert isinstance(result['final_user_payoff'], (int, float))
-    assert isinstance(result['final_computer_payoff'], (int, float))
-    assert result['final_user_payoff'] >= 0
-    assert result['final_computer_payoff'] >= 0
-    
-    # Test case 2: Play full game with tit_for_tat strategy
+    #Test case 2: Play full game with tit_for_tat strategy
     test_game_tit_for_tat = {
         'user_moves': [
             {
@@ -1318,7 +1318,7 @@ def test_play_full_game():
     }
     
     print("\n=== Testing play_full_game with tit_for_tat strategy ===")
-    result_tit_for_tat = play_full_game(test_game_tit_for_tat)
+    result_tit_for_tat, iteration_moves = play_full_game(test_game_tit_for_tat)
     
     print(f"Final user payoff: {result_tit_for_tat['final_user_payoff']}")
     print(f"Final computer payoff: {result_tit_for_tat['final_computer_payoff']}")
@@ -1435,10 +1435,10 @@ def test_play_full_game():
     }
     
     print("\n=== Testing play_full_game with mixed strategy ===")
-    result_mixed = play_full_game(test_game_mixed)
+    result_mixed, iteration_moves = play_full_game(test_game_mixed)
     
     print(f"Final user payoff: {result_mixed['final_user_payoff']}")
-    print(f"Final computer payoff: {result_mixed['final_computer_payoff']}")
+    print(f"Final computer payoff: {result_mixed['final_computer_payoff']}") 
     
     assert 'final_user_payoff' in result_mixed
     assert 'final_computer_payoff' in result_mixed
@@ -1449,9 +1449,9 @@ def test_play_full_game():
     
     # Test case 4: Compare payoffs across different strategies
     print("\n=== Comparing payoffs across strategies ===")
-    print(f"Copy Cat - User: {result['final_user_payoff']:.2f}, Computer: {result['final_computer_payoff']:.2f}")
-    print(f"Tit for Tat - User: {result_tit_for_tat['final_user_payoff']:.2f}, Computer: {result_tit_for_tat['final_computer_payoff']:.2f}")
-    print(f"Mixed - User: {result_mixed['final_user_payoff']:.2f}, Computer: {result_mixed['final_computer_payoff']:.2f}")
+    #print(f"Copy Cat - User: {result['final_user_payoff']:.2f}, Computer: {result['final_computer_payoff']:.2f}")
+    #print(f"Tit for Tat - User: {result_tit_for_tat['final_user_payoff']:.2f}, Computer: {result_tit_for_tat['final_computer_payoff']:.2f}")
+    #print(f"Mixed - User: {result_mixed['final_user_payoff']:.2f}, Computer: {result_mixed['final_computer_payoff']:.2f}")
     
     # Test case 5: Test with random strategy
     test_game_random = {
@@ -1521,7 +1521,7 @@ def test_play_full_game():
     }
     
     print("\n=== Testing play_full_game with random strategy ===")
-    result_random = play_full_game(test_game_random)
+    result_random, iteration_moves = play_full_game(test_game_random)
     
     print(f"Final user payoff: {result_random['final_user_payoff']}")
     print(f"Final computer payoff: {result_random['final_computer_payoff']}")
@@ -1533,5 +1533,5 @@ def test_play_full_game():
     assert result_random['final_user_payoff'] >= 0
     assert result_random['final_computer_payoff'] >= 0
     
-    # print("\nAll play_full_game tests passed successfully!")
+    print("\nAll play_full_game tests passed successfully!")
 
