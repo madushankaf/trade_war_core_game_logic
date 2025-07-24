@@ -160,4 +160,3 @@ When adding new features, please ensure:
 
 ## License
 
-[Add your license information here]
