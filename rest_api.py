@@ -188,8 +188,8 @@ def internal_error(error):
 @app.route('/games/<game_id>/play', methods=['POST'])
 def play_game(game_id):
     try:
-        if game_id not in game_map:
-            return jsonify({'error': 'Game not found'}), 404
+        # if game_id not in game_map:
+        #     return jsonify({'error': 'Game not found'}), 404
 
         data = request.get_json()
         is_valid, error_msg = validate_json_data(data)
@@ -217,4 +217,4 @@ def play_game(game_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5010)
