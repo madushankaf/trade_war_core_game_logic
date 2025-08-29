@@ -6,6 +6,7 @@ import uuid
 import json
 from game_moves import GameMoves
 from game_theory import play_full_game
+from game_model import GameModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -195,7 +196,15 @@ def play_game(game_id):
         if not is_valid:
             return jsonify({'error': error_msg}), 400
 
-        game = game_map[game_id]
+        # Validate the game data using GameModel
+        try:
+            game_model = GameModel.from_dict(data)
+            # Convert back to dict for play_full_game
+            game = game_model.to_dict()
+        except Exception as validation_error:
+            logger.error(f"Game data validation error: {str(validation_error)}")
+            return jsonify({'error': f'Invalid game data: {str(validation_error)}'}), 400
+
         payoff_outcome, iteration_moves = play_full_game(game)
    
         return jsonify({

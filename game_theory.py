@@ -126,6 +126,18 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict],
     if player is None:
         raise ValueError(f"Move {move['name']} has no player")
     
+    # if player == 'user':
+    #     payoff_entry = next((e for e in payoff_matrix
+    #                          if e['user_move_name'] == move_name and e['computer_move_name'] == opp_name), None)
+    # elif player == 'computer':
+    #     payoff_entry = next((e for e in payoff_matrix
+    #                          if e['user_move_name'] == opp_name and e['computer_move_name'] == move_name), None)
+    # else:
+    #     raise ValueError("player must be 'user' or 'computer'")
+
+    # if not payoff_entry:
+    #     return 0.0
+    
     # Find matching payoff in the matrix
     payoff_entry = next(
         (entry for entry in payoff_matrix 
