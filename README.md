@@ -2,6 +2,25 @@
 
 A Python implementation of game theory algorithms for trade war scenarios, including Nash equilibrium calculations, mixed strategy analysis, and various game strategies.
 
+## Quick Start
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start the API server
+python rest_api.py
+
+# 3. In another terminal, start the UI (optional)
+cd trade_war_ui
+npm install
+npm start
+```
+
+The application will be available at:
+- API: http://localhost:5000
+- UI: http://localhost:3000
+
 ## Features
 
 - **Pure Strategy Analysis**: Dominant move detection and payoff calculations
@@ -13,8 +32,107 @@ A Python implementation of game theory algorithms for trade war scenarios, inclu
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.8 or higher
+- pip (Python package installer)
+
+### Install Dependencies
+
 ```bash
-pip install numpy pytest
+# Install all required packages
+pip install -r requirements.txt
+
+# Or install manually if requirements.txt is not available
+pip install numpy scipy nashpy flask pytest
+```
+
+### Virtual Environment (Recommended)
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
+
+# Install dependencies in virtual environment
+pip install -r requirements.txt
+```
+
+### Docker Installation (Alternative)
+
+```bash
+# Build the Docker image
+docker build -t trade-war-api .
+
+# Run the container
+docker run -p 5000:5000 trade-war-api
+
+# Or run in detached mode
+docker run -d -p 5000:5000 --name trade-war-api trade-war-api
+
+# Using Docker Compose (recommended)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the service
+docker-compose down
+```
+
+## Running the Application
+
+### Start the REST API Server
+
+```bash
+# Start the Flask REST API server
+python rest_api.py
+
+# The server will start on http://localhost:5000
+# You can access the API endpoints for game play
+```
+
+### Start the React UI (Optional)
+
+```bash
+# Navigate to the UI directory
+cd trade_war_ui
+
+# Install Node.js dependencies
+npm install
+
+# Start the React development server
+npm start
+
+# The UI will be available at http://localhost:3000
+```
+
+### API Endpoints
+
+The REST API provides the following endpoints:
+
+- `GET /games` - List available games
+- `POST /games` - Create a new game
+- `GET /games/{game_id}` - Get game details
+- `POST /games/{game_id}/play` - Play a game round
+- `GET /games/{game_id}/history` - Get game history
+
+### Example API Usage
+
+```bash
+# Create a new game
+curl -X POST http://localhost:5000/games \
+  -H "Content-Type: application/json" \
+  -d @sample_game_model.json
+
+# Play a game round
+curl -X POST http://localhost:5000/games/test/play \
+  -H "Content-Type: application/json"
 ```
 
 ## Running Tests
