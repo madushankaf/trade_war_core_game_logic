@@ -684,7 +684,7 @@ def test_get_next_move_based_on_strategy_settings():
             'strategy': 'copy_cat',  # or 'tit_for_tat'
             'first_move': 'open_dialogue',
             'cooperation_start': 2,
-            'mixed_strategy_array': None
+            'mixed_strategy_array': ['open_dialogue', 'raise_tariffs', 'wait_and_see']
         }
     }
 
@@ -1083,7 +1083,7 @@ def test_play_game_round():
             'strategy': 'mixed',
             'first_move': 'open_dialogue',
             'cooperation_start': 2,
-            'mixed_strategy_array': None
+            'mixed_strategy_array': ['open_dialogue', 'raise_tariffs', 'wait_and_see']
         },
         'state': {
             'equalizer_strategy': None,
@@ -1423,7 +1423,7 @@ def test_play_full_game():
             'strategy': 'mixed',
             'first_move': 'open_dialogue',
             'cooperation_start': 2,
-            'mixed_strategy_array': None
+            'mixed_strategy_array': ['open_dialogue', 'raise_tariffs', 'wait_and_see']
         },
         'state': {
             'equalizer_strategy': None,

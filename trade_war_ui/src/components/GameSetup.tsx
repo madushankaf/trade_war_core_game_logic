@@ -11,7 +11,8 @@ import {
   Slider,
   Button,
   Chip,
-  Paper
+  Paper,
+  TextField
 } from '@mui/material';
 import { Country, StrategyType, Move } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
@@ -27,6 +28,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   const [firstMove, setFirstMove] = useState<string>('open_dialogue');
   const [cooperationStart, setCooperationStart] = useState<number>(2);
   const [selectedMoves, setSelectedMoves] = useState<string[]>(['open_dialogue', 'raise_tariffs', 'wait_and_see']);
+  const [moveProbabilities, setMoveProbabilities] = useState<Record<string, number>>({});
 
   const strategies = [
     { value: 'copy_cat', label: 'Copy Cat', description: 'Copy your opponent\'s last move' },
@@ -36,10 +38,46 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
     { value: 'mixed', label: 'Mixed Strategy', description: 'Use probability-based strategy' }
   ];
 
+  // Initialize probabilities when selected moves change
+  React.useEffect(() => {
+    const newProbabilities: Record<string, number> = {};
+    selectedMoves.forEach(move => {
+      if (!(move in moveProbabilities)) {
+        newProbabilities[move] = 1 / selectedMoves.length;
+      } else {
+        newProbabilities[move] = moveProbabilities[move];
+      }
+    });
+    setMoveProbabilities(newProbabilities);
+  }, [selectedMoves]);
+
+  const handleProbabilityChange = (moveName: string, newProbability: number) => {
+    setMoveProbabilities(prev => ({
+      ...prev,
+      [moveName]: newProbability
+    }));
+  };
+
+  const normalizeProbabilities = () => {
+    const total = Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0);
+    if (total !== 1) {
+      const normalized: Record<string, number> = {};
+      Object.keys(moveProbabilities).forEach(move => {
+        normalized[move] = moveProbabilities[move] / total;
+      });
+      setMoveProbabilities(normalized);
+    }
+  };
+
   const handleStartGame = () => {
     if (!userCountry || !computerCountry) {
       alert('Please select both countries');
       return;
+    }
+
+    // Normalize probabilities before starting game
+    if (strategy === 'mixed') {
+      normalizeProbabilities();
     }
 
     // Create game data structure
@@ -49,7 +87,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         return {
           name: moveName,
           type: moveInfo?.type || 'cooperative',
-          probability: 1 / selectedMoves.length,
+          probability: strategy === 'mixed' ? moveProbabilities[moveName] : 1 / selectedMoves.length,
           player: 'user' as const
         };
       }),
@@ -58,7 +96,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         return {
           name: moveName,
           type: moveInfo?.type || 'cooperative',
-          probability: 1 / selectedMoves.length,
+          probability: strategy === 'mixed' ? moveProbabilities[moveName] : 1 / selectedMoves.length,
           player: 'computer' as const
         };
       }),
@@ -67,7 +105,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         strategy,
         first_move: firstMove,
         cooperation_start: cooperationStart,
-        mixed_strategy_array: null
+        mixed_strategy_array: strategy === 'mixed' ? selectedMoves : null
       },
       state: {
         equalizer_strategy: null,
@@ -231,7 +269,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               <Typography variant="h6" gutterBottom>
                 Available Moves
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
                 {defaultMoves.map((move) => (
                   <Chip
                     key={move.name}
@@ -250,13 +288,79 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
           </Card>
         </Box>
 
+        {/* Probability Configuration - Only show for Mixed Strategy */}
+        {strategy === 'mixed' && (
+          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
+            <Card sx={{ 
+              border: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? '2px solid #ff9800' : '1px solid rgba(0, 0, 0, 0.12)',
+              bgcolor: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'rgba(255, 152, 0, 0.05)' : 'inherit'
+            }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Move Probabilities (Mixed Strategy)
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Set the probability for each selected move. Probabilities will be automatically normalized to sum to 100%.
+                </Typography>
+                {Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 && (
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'warning.light', borderRadius: 1, border: '1px solid #ff9800' }}>
+                    <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 'bold' }}>
+                      ⚠️ Warning: Total probability is not 100%. Please adjust the probabilities to sum to exactly 100% before starting the game.
+                    </Typography>
+                  </Box>
+                )}
+                {selectedMoves.map((moveName) => (
+                  <Box key={moveName} sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="subtitle1">
+                        {moveName.replace('_', ' ').toUpperCase()}
+                      </Typography>
+                      <Typography variant="body2" color="primary">
+                        {(moveProbabilities[moveName] * 100).toFixed(1)}%
+                      </Typography>
+                    </Box>
+                    <Slider
+                      value={moveProbabilities[moveName]}
+                      onChange={(_, value) => handleProbabilityChange(moveName, value as number)}
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      valueLabelDisplay="auto"
+                      valueLabelFormat={(value) => `${(value * 100).toFixed(1)}%`}
+                    />
+                  </Box>
+                ))}
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'warning.light' : 'grey.100', 
+                  borderRadius: 1,
+                  border: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? '1px solid #ff9800' : 'none'
+                }}>
+                  <Typography variant="body2" color={Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'warning.dark' : 'text.secondary'}>
+                    Total Probability: {(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) * 100).toFixed(1)}%
+                    {Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 && (
+                      <span style={{ color: '#d32f2f', fontWeight: 'bold' }}> ❌ Must equal 100%</span>
+                    )}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
         {/* Start Game Button */}
         <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' }, display: 'flex', justifyContent: 'center' }}>
           <Button
             variant="contained"
             size="large"
             onClick={handleStartGame}
-            disabled={!userCountry || !computerCountry || selectedMoves.length < 2}
+            disabled={
+              !userCountry || 
+              !computerCountry || 
+              selectedMoves.length < 2 || 
+              (strategy === 'mixed' && Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01)
+            }
             sx={{ px: 4, py: 1.5 }}
           >
             🚀 Start Trade War Game

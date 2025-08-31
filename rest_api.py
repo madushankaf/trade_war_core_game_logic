@@ -205,6 +205,8 @@ def play_game(game_id):
             logger.error(f"Game data validation error: {str(validation_error)}")
             return jsonify({'error': f'Invalid game data: {str(validation_error)}'}), 400
 
+        print(game)
+
         payoff_outcome, iteration_moves = play_full_game(game)
    
         return jsonify({

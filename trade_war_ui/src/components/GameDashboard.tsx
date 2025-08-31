@@ -261,9 +261,11 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                     <Typography variant="subtitle1">
                       {move.name.replace('_', ' ').toUpperCase()}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Probability: {(move.probability * 100).toFixed(1)}%
-                    </Typography>
+                    {gameData.user_strategy_settings.strategy === 'mixed' && (
+                      <Typography variant="caption" color="text.secondary">
+                        Probability: {(move.probability * 100).toFixed(1)}%
+                      </Typography>
+                    )}
                   </Box>
                   <Chip 
                     label={move.type} 

@@ -148,7 +148,9 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict],
     
     if payoff_entry:
         # Get base payoff and adjust for probabilities
-        base_payoff = payoff_entry['payoff'][player]  # For user's perspective
+        # Convert enum to string value for dictionary access
+        player_key = player.value if hasattr(player, 'value') else str(player)
+        base_payoff = payoff_entry['payoff'][player_key]  # For user's perspective
         move_payoff = base_payoff * move_prob * opp_prob
         
         print(f"Found payoff entry: {payoff_entry}")
@@ -182,6 +184,7 @@ def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_m
     Get the security-level (min-max) response to an opponent's strategy.
     """
 
+    print(f"Getting security-level response for moves: {moves} against opponent move: {opponent_move}")
 
     all_payoffs = {}
     for move in moves:
@@ -201,8 +204,10 @@ def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_m
    }
     
     worst_case_move = max(worst_case_moves, key=worst_case_moves.get)
+    print(f"Worst case move: {worst_case_move}")
     for move in moves:
         if move['name'] == worst_case_move:
+            print(f"Returning worst case move: {move}")
             return move
 
 def solve_mixed_strategy_indifference_general(payoffs, player='row', tolerance=0.1):
@@ -441,7 +446,12 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
             indices = np.arange(len(user_strategy_settings['mixed_strategy_array'])) - shift
             probabilities = np.exp(-np.maximum(0, indices) * 0.5) 
             probabilities = probabilities / probabilities.sum()
-            return np.random.choice(user_strategy_settings['mixed_strategy_array'], p=probabilities)
+            next_mixed_move = np.random.choice(user_strategy_settings['mixed_strategy_array'], p=probabilities)
+            print(f"Next mixed move: {next_mixed_move}")
+            for mixed_move in user_moves:
+                if mixed_move['name'] == next_mixed_move:
+                    print(f"Returning mixed move: {mixed_move}")
+                    return mixed_move
         else:
             raise ValueError(f"Unknown strategy or strategy is not set: {user_strategy_settings['strategy']}")
 
