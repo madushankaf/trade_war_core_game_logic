@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -7,10 +7,7 @@ import {
   Button,
   Chip,
   LinearProgress,
-  Paper,
-  Divider,
-  IconButton,
-  Tooltip
+  Paper
 } from '@mui/material';
 import {
   PlayArrow,

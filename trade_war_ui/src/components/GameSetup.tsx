@@ -10,11 +10,9 @@ import {
   MenuItem,
   Slider,
   Button,
-  Chip,
-  Paper,
-  TextField
+  Chip
 } from '@mui/material';
-import { Country, StrategyType, Move } from '../types/game';
+import { Country, StrategyType } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
 
 interface GameSetupProps {
@@ -40,15 +38,14 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
 
   // Initialize probabilities when selected moves change
   React.useEffect(() => {
-    const newProbabilities: Record<string, number> = {};
-    selectedMoves.forEach(move => {
-      if (!(move in moveProbabilities)) {
-        newProbabilities[move] = 1 / selectedMoves.length;
-      } else {
-        newProbabilities[move] = moveProbabilities[move];
-      }
+    setMoveProbabilities((previousProbabilities) => {
+      const newProbabilities: Record<string, number> = {};
+      selectedMoves.forEach((move) => {
+        newProbabilities[move] =
+          previousProbabilities[move] ?? 1 / selectedMoves.length;
+      });
+      return newProbabilities;
     });
-    setMoveProbabilities(newProbabilities);
   }, [selectedMoves]);
 
   const handleProbabilityChange = (moveName: string, newProbability: number) => {
