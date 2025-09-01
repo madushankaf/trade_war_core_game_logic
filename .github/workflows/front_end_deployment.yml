@@ -26,8 +26,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: './trade_war_ui/package-lock.json'
 
     - name: Install dependencies
       working-directory: ./trade_war_ui
