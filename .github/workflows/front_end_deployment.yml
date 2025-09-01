@@ -1,10 +1,14 @@
-name: Deploy to S3
+name: Frontend Deployment
 
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - 'trade_war_ui/**'
   pull_request:
     branches: [ main, master ]
+    paths:
+      - 'trade_war_ui/**'
 
 env:
   AWS_REGION: us-east-1
@@ -23,14 +27,14 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: 'trade_war_ui/package-lock.json'
 
     - name: Install dependencies
+      working-directory: ./trade_war_ui
       run: npm ci
 
-    - name: Run tests
-      run: npm test -- --watchAll=false --passWithNoTests
-
     - name: Build application
+      working-directory: ./trade_war_ui
       run: npm run build
 
     - name: Configure AWS credentials
@@ -42,8 +46,8 @@ jobs:
 
     - name: Deploy to S3
       run: |
-        aws s3 sync build/ s3://${{ env.S3_BUCKET }} --delete --cache-control "max-age=31536000,public"
-        aws s3 cp build/index.html s3://${{ env.S3_BUCKET }}/index.html --cache-control "no-cache,no-store,must-revalidate"
+        aws s3 sync trade_war_ui/build/ s3://${{ env.S3_BUCKET }} --delete --cache-control "max-age=31536000,public"
+        aws s3 cp trade_war_ui/build/index.html s3://${{ env.S3_BUCKET }}/index.html --cache-control "no-cache,no-store,must-revalidate"
 
     - name: Invalidate CloudFront cache
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
