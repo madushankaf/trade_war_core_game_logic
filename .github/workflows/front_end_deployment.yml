@@ -35,7 +35,7 @@ jobs:
     - name: Build application
       working-directory: ./trade_war_ui
       env:
-        REACT_APP_API_BASE_URL: ${{ env.API_BASE_URL }}
+        API_BASE_URL: ${{ env.API_BASE_URL }}
       run: npm run build
 
     - name: Configure AWS credentials
