@@ -3,6 +3,7 @@ import { GameModel, GameResult } from '../types/game';
 
 const API_BASE_URL = `${process.env.API_BASE_URL}` || 'http://localhost:5010';
 
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
