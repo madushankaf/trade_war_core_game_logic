@@ -1,6 +1,7 @@
 # Web framework and CORS
 flask==3.0.2
 flask-cors==4.0.0
+flask-socketio==5.3.6
 
 # Scientific computing and optimization
 numpy>=1.21.0
@@ -16,3 +17,5 @@ pytest>=6.0.0
 typing-extensions>=4.0.0 
 
 pydantic>=2.0.0
+
+Flask-SocketIO

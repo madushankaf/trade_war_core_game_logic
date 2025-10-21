@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple
 import numpy as np
+import time
 from game_moves import GameMoves
 import nashpy as nash
 from scipy.optimize import linprog
@@ -605,11 +606,19 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
     game['state']['round_idx'] = round_idx
     return user_move, computer_move
 
-def play_full_game(game: dict) -> dict:
+def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float = 0.5) -> dict:
     """
     Play a complete game and return the moves history and dominant strategies.
+    
+    Args:
+        game: Game configuration dictionary
+        socketio: Optional Flask-SocketIO instance for real-time updates
+        game_id: Optional game ID for WebSocket room targeting
+        round_delay: Delay in seconds between rounds (default: 0.5s)
     """
     iteration_moves = GameMoves()
+    final_user_payoff = 0
+    final_computer_payoff = 0
     
     for i in range(PHASE_3_END):
         user_move, computer_move = play_game_round(game, i)
@@ -617,15 +626,60 @@ def play_full_game(game: dict) -> dict:
             continue
         if computer_move is None:
             continue
+        
+        # Add moves to history
         iteration_moves.add_moves(user_move, computer_move)
-    
-    final_user_payoff = 0
-    final_computer_payoff = 0
-    for user_move, computer_move in iteration_moves.get_moves():
+        
+        # Calculate payoffs immediately
         user_payoff = calculate_payoff(user_move, computer_move, game['payoff_matrix'], is_noise_added=True)
         computer_payoff = calculate_payoff(computer_move, user_move, game['payoff_matrix'], is_noise_added=True)
+        
+        # Debug: Check if payoffs are the expected type
+        print(f"Debug: user_payoff type: {type(user_payoff)}, value: {user_payoff}")
+        print(f"Debug: computer_payoff type: {type(computer_payoff)}, value: {computer_payoff}")
+        
+        # Ensure payoffs are floats
+        if isinstance(user_payoff, list):
+            user_payoff = float(user_payoff[0]) if user_payoff else 0.0
+        if isinstance(computer_payoff, list):
+            computer_payoff = float(computer_payoff[0]) if computer_payoff else 0.0
         final_user_payoff += user_payoff
         final_computer_payoff += computer_payoff
+        
+        # Emit real-time update via WebSocket if available
+        if socketio and game_id:
+            round_winner = "tie"
+            if user_payoff > computer_payoff:
+                round_winner = "user"
+            elif computer_payoff > user_payoff:
+                round_winner = "computer"
+            
+            update_data = {
+                "type": "round_update",
+                "round": i + 1,
+                "user_move": {
+                    "name": user_move['name'],
+                    "type": user_move['type']
+                },
+                "computer_move": {
+                    "name": computer_move['name'],
+                    "type": computer_move['type']
+                },
+                "user_payoff": round(user_payoff, 2),
+                "computer_payoff": round(computer_payoff, 2),
+                "round_winner": round_winner,
+                "running_totals": {
+                    "user_total": round(final_user_payoff, 2),
+                    "computer_total": round(final_computer_payoff, 2)
+                },
+                "game_status": "in_progress" if i < PHASE_3_END - 1 else "completed"
+            }
+            
+            socketio.emit('game_update', update_data, room=game_id)
+            
+            # Add delay between rounds for better real-time experience
+            if round_delay > 0:
+                time.sleep(round_delay)
 
     return {
         'final_user_payoff': final_user_payoff,

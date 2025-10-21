@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import logging
 from typing import Dict, List, Optional, Tuple
 import uuid
 import json
+import threading
 from game_moves import GameMoves
 from game_theory import play_full_game
 from game_model import GameModel
@@ -14,9 +16,34 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+socketio = SocketIO(app, cors_allowed_origins="*")  # Enable SocketIO with CORS
 
 # Game map to store game objects
 game_map: Dict[str, dict] = {}
+
+# WebSocket event handlers
+@socketio.on('join_game')
+def handle_join_game(data):
+    """Handle client joining a game room"""
+    game_id = data.get('game_id')
+    if game_id:
+        join_room(game_id)
+        emit('joined_game', {'game_id': game_id, 'message': 'Successfully joined game room'})
+        logger.info(f"Client joined game room: {game_id}")
+
+@socketio.on('leave_game')
+def handle_leave_game(data):
+    """Handle client leaving a game room"""
+    game_id = data.get('game_id')
+    if game_id:
+        leave_room(game_id)
+        emit('left_game', {'game_id': game_id, 'message': 'Left game room'})
+        logger.info(f"Client left game room: {game_id}")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle client disconnect"""
+    logger.info('Client disconnected')
 
 def validate_json_data(data):
     """
@@ -188,9 +215,6 @@ def internal_error(error):
 @app.route('/games/<game_id>/play', methods=['POST'])
 def play_game(game_id):
     try:
-        # if game_id not in game_map:
-        #     return jsonify({'error': 'Game not found'}), 404
-
         data = request.get_json()
         is_valid, error_msg = validate_json_data(data)
         if not is_valid:
@@ -205,13 +229,26 @@ def play_game(game_id):
             logger.error(f"Game data validation error: {str(validation_error)}")
             return jsonify({'error': f'Invalid game data: {str(validation_error)}'}), 400
 
-        print(game)
-
-        payoff_outcome, iteration_moves = play_full_game(game)
-   
+        # Get round delay from query parameter (default: 0.5 seconds)
+        round_delay = float(request.args.get('delay', '0.5'))
+        
+        # Run game with real-time updates in background thread
+        def run_game_with_websocket():
+            try:
+                payoff_outcome, iteration_moves = play_full_game(game, socketio, game_id, round_delay)
+                logger.info(f"Game {game_id} completed successfully")
+            except Exception as e:
+                logger.error(f"Error in background game: {str(e)}")
+                socketio.emit('game_error', {'error': str(e)}, room=game_id)
+        
+        # Start game in background thread
+        game_thread = threading.Thread(target=run_game_with_websocket)
+        game_thread.daemon = True
+        game_thread.start()
+        
         return jsonify({
-            'message': 'Game completed successfully',
-            'payoff_outcome': payoff_outcome
+            'message': 'Game started with real-time updates',
+            'game_id': game_id
         }), 200
 
     except Exception as e:
@@ -219,4 +256,4 @@ def play_game(game_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5010)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5010)
