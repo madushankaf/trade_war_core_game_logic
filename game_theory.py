@@ -558,20 +558,9 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
         
     user_move = get_next_move_based_on_strategy_settings(game, game['state']['last_computer_move'], round_idx)
     if user_move is None:
+        print(f"User move is None, getting a random move")
         user_move = get_a_random_move(game['user_moves'])
 
-    # Check if current user_move is a dominant strategy
-    #computer_dominant = check_dominant_strategy(game['computer_moves'], game['user_moves'], user_move)
-    user_dominant = check_dominant_move(game['user_moves'], user_move, game['payoff_matrix'])
-
-    
-    if user_dominant and user_move == user_dominant:
-        computer_move = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
-        if computer_move is None:
-            computer_move = get_a_random_move(game['computer_moves'])
-        game['state']['last_computer_move'] = computer_move
-        game['state']['round_idx'] = round_idx
-        return user_move, computer_move
 
     if PHASE_1_START <= round_idx <= PHASE_1_END:  # Phase 1: Nash Equilibrium
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
@@ -604,6 +593,14 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
 
     game['state']['last_computer_move'] = computer_move
     game['state']['round_idx'] = round_idx
+
+    # be defensive against the user's dominant move - so override the chosen computer's move with the security level response
+    user_dominant = check_dominant_move(game['user_moves'], computer_move, game['payoff_matrix'])
+    if user_dominant and user_move == user_dominant:
+        security_level_response = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
+        computer_move = security_level_response if security_level_response else computer_move
+        game['state']['last_computer_move'] = computer_move
+
     return user_move, computer_move
 
 def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float = 0.5) -> dict:
@@ -645,15 +642,20 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
             computer_payoff = float(computer_payoff[0]) if computer_payoff else 0.0
         final_user_payoff += user_payoff
         final_computer_payoff += computer_payoff
+
+        print(f"User payoff: {final_user_payoff}, Computer payoff: {final_computer_payoff}")
         
         # Emit real-time update via WebSocket if available
         if socketio and game_id:
             round_winner = "tie"
             if user_payoff > computer_payoff:
                 round_winner = "user"
+                print(f"User won the round")
             elif computer_payoff > user_payoff:
                 round_winner = "computer"
+                print(f"Computer won the round")
             
+            print(f"Round winner: {round_winner}")
             update_data = {
                 "type": "round_update",
                 "round": i + 1,

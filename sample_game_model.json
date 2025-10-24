@@ -52,7 +52,7 @@
       "user_move_name": "open_dialogue",
       "computer_move_name": "raise_tariffs",
       "payoff": {
-        "user": 1,
+        "user": 4,
         "computer": 4
       }
     },
@@ -69,7 +69,7 @@
       "computer_move_name": "open_dialogue",
       "payoff": {
         "user": 4,
-        "computer": 1
+        "computer": 4
       }
     },
     {
@@ -85,7 +85,7 @@
       "computer_move_name": "wait_and_see",
       "payoff": {
         "user": 3,
-        "computer": 1
+        "computer": 3
       }
     },
     {
@@ -100,7 +100,7 @@
       "user_move_name": "wait_and_see",
       "computer_move_name": "raise_tariffs",
       "payoff": {
-        "user": 1,
+        "user": 3,
         "computer": 3
       }
     },

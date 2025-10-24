@@ -124,8 +124,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
           user_move_name: userMove,
           computer_move_name: computerMove,
           payoff: {
-            user: Math.floor(Math.random() * 5) + 1,
-            computer: Math.floor(Math.random() * 5) + 1
+            user: 4,
+            computer: 4
           }
         });
       }
