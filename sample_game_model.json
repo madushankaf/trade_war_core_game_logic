@@ -40,78 +40,17 @@
     }
   ],
   "payoff_matrix": [
-    {
-      "user_move_name": "open_dialogue",
-      "computer_move_name": "open_dialogue",
-      "payoff": {
-        "user": 3,
-        "computer": 3
-      }
-    },
-    {
-      "user_move_name": "open_dialogue",
-      "computer_move_name": "raise_tariffs",
-      "payoff": {
-        "user": 4,
-        "computer": 4
-      }
-    },
-    {
-      "user_move_name": "open_dialogue",
-      "computer_move_name": "wait_and_see",
-      "payoff": {
-        "user": 2,
-        "computer": 2
-      }
-    },
-    {
-      "user_move_name": "raise_tariffs",
-      "computer_move_name": "open_dialogue",
-      "payoff": {
-        "user": 4,
-        "computer": 4
-      }
-    },
-    {
-      "user_move_name": "raise_tariffs",
-      "computer_move_name": "raise_tariffs",
-      "payoff": {
-        "user": 2,
-        "computer": 2
-      }
-    },
-    {
-      "user_move_name": "raise_tariffs",
-      "computer_move_name": "wait_and_see",
-      "payoff": {
-        "user": 3,
-        "computer": 3
-      }
-    },
-    {
-      "user_move_name": "wait_and_see",
-      "computer_move_name": "open_dialogue",
-      "payoff": {
-        "user": 2,
-        "computer": 2
-      }
-    },
-    {
-      "user_move_name": "wait_and_see",
-      "computer_move_name": "raise_tariffs",
-      "payoff": {
-        "user": 3,
-        "computer": 3
-      }
-    },
-    {
-      "user_move_name": "wait_and_see",
-      "computer_move_name": "wait_and_see",
-      "payoff": {
-        "user": 1,
-        "computer": 1
-      }
-    }
+    { "user_move_name": "open_dialogue", "computer_move_name": "open_dialogue", "payoff": { "user": 3, "computer": 3 } },
+    { "user_move_name": "open_dialogue", "computer_move_name": "raise_tariffs",  "payoff": { "user": 1, "computer": 5 } },
+    { "user_move_name": "open_dialogue", "computer_move_name": "wait_and_see",   "payoff": { "user": 2, "computer": 2 } },
+  
+    { "user_move_name": "raise_tariffs",  "computer_move_name": "open_dialogue", "payoff": { "user": 5, "computer": 1 } },
+    { "user_move_name": "raise_tariffs",  "computer_move_name": "raise_tariffs", "payoff": { "user": 0, "computer": 0 } },
+    { "user_move_name": "raise_tariffs",  "computer_move_name": "wait_and_see",  "payoff": { "user": 3, "computer": 2 } },
+  
+    { "user_move_name": "wait_and_see",   "computer_move_name": "open_dialogue", "payoff": { "user": 2, "computer": 2 } },
+    { "user_move_name": "wait_and_see",   "computer_move_name": "raise_tariffs", "payoff": { "user": 2, "computer": 3 } },
+    { "user_move_name": "wait_and_see",   "computer_move_name": "wait_and_see",  "payoff": { "user": 1, "computer": 1 } }
   ],
   "user_strategy_settings": {
     "strategy": "copy_cat",

@@ -4,6 +4,8 @@ import time
 from game_moves import GameMoves
 import nashpy as nash
 from scipy.optimize import linprog
+from game_logger import get_game_logger
+import random
 
 # Phase boundaries
 PHASE_1_START = 0
@@ -127,39 +129,37 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict],
     if player is None:
         raise ValueError(f"Move {move['name']} has no player")
     
-    # if player == 'user':
-    #     payoff_entry = next((e for e in payoff_matrix
-    #                          if e['user_move_name'] == move_name and e['computer_move_name'] == opp_name), None)
-    # elif player == 'computer':
-    #     payoff_entry = next((e for e in payoff_matrix
-    #                          if e['user_move_name'] == opp_name and e['computer_move_name'] == move_name), None)
-    # else:
-    #     raise ValueError("player must be 'user' or 'computer'")
-
-    # if not payoff_entry:
-    #     return 0.0
-    
-    # Find matching payoff in the matrix
-    payoff_entry = next(
-        (entry for entry in payoff_matrix 
-         if entry['user_move_name'] == move_name 
-         and entry['computer_move_name'] == opp_name),
-        None
-    )
-    
-    if payoff_entry:
-        # Get base payoff and adjust for probabilities
-        # Convert enum to string value for dictionary access
-        player_key = player.value if hasattr(player, 'value') else str(player)
-        base_payoff = payoff_entry['payoff'][player_key]  # For user's perspective
-        move_payoff = base_payoff * move_prob * opp_prob
-        
-        print(f"Found payoff entry: {payoff_entry}")
-        print(f"Base payoff: {base_payoff}")
-        print(f"Adjusted payoff (with probabilities): {move_payoff}")
+    # Find matching payoff in the matrix based on player perspective
+    if player == 'user':
+        payoff_entry = next(
+            (entry for entry in payoff_matrix
+             if entry['user_move_name'] == move_name 
+             and entry['computer_move_name'] == opp_name), 
+            None
+        )
+    elif player == 'computer':
+        payoff_entry = next(
+            (entry for entry in payoff_matrix
+             if entry['user_move_name'] == opp_name 
+             and entry['computer_move_name'] == move_name), 
+            None
+        )
     else:
+        raise ValueError("player must be 'user' or 'computer'")
+
+    if not payoff_entry:
         print(f"No payoff entry found for move combination: {move_name} vs {opp_name}")
-        move_payoff = 0.0
+        return 0.0
+    
+    # Get base payoff and adjust for probabilities
+    # Convert enum to string value for dictionary access
+    player_key = player.value if hasattr(player, 'value') else str(player)
+    base_payoff = payoff_entry['payoff'][player_key]
+    move_payoff = base_payoff * move_prob * opp_prob
+    
+    print(f"Found payoff entry: {payoff_entry}")
+    print(f"Base payoff: {base_payoff}")
+    print(f"Adjusted payoff (with probabilities): {move_payoff}")
         
     noise = 0.0
     #Always add noise, but ensure final payoff is never negative
@@ -267,7 +267,8 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
         computer_moves: List[dict],
         user_moves: List[dict],
         payoff_matrix: List[dict],
-        state: dict) -> dict:
+        state: dict,
+        user_support: Optional[np.ndarray] = None) -> dict:
     """
     Implements a mixed strategy based on probability indifference principle,
     where the strategy makes the opponent indifferent between their pure strategies.
@@ -286,8 +287,6 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
         computer_payoff_matrix = np.array([[calculate_payoff(cs, us, payoff_matrix) for us in user_moves] for cs in computer_moves])
         user_payoff_matrix = np.array([[calculate_payoff(us, cs, payoff_matrix) for cs in computer_moves] for us in user_moves])   
 
-        print(f"Computer Payoff Matrix: {computer_payoff_matrix}")
-        print(f"User Payoff Matrix: {user_payoff_matrix}")
 
         strategy = refresh_equaliser_if_needed_using_indifference_principles(
             computer_payoff_matrix,
@@ -375,15 +374,15 @@ def get_a_random_move(moves: List[dict]) -> Optional[dict]:
         return None
     return np.random.choice(moves)
 
-def get_copy_cat_move(moves: List[dict], last_computer_move: dict) -> Optional[dict]:
+def get_copy_cat_move(moves: List[dict], opp_move: dict) -> Optional[dict]:
     """
     Get the copy cat move from the available strategies.
     """
-    if last_computer_move is None:
+    if opp_move is None:
         return get_a_random_move(moves)
     
-    last_computer_move_name = last_computer_move['name']
-    matching_move = next((move for move in moves if move['name'] == last_computer_move_name), None)
+    opp_move_name = opp_move['name']
+    matching_move = next((move for move in moves if move['name'] == opp_move_name), None)
     if matching_move:
         return matching_move
     else:
@@ -476,7 +475,9 @@ def find_nash_equilibrium_strategy(moves: List[dict], opponent_moves: List[dict]
         List[Tuple[np.ndarray, np.ndarray]]: List of Nash equilibrium moves
     """
     # Convert strategies to payoff matrices
+    # Row player (computer) payoffs: computer move vs user move
     row_player_payoffs = np.array([[calculate_payoff(s, os, payoff_matrix) for os in opponent_moves] for s in moves])
+    # Column player (user) payoffs: user move vs computer move (flipped indexing)
     col_player_payoffs = np.array([[calculate_payoff(os, s, payoff_matrix) for s in moves] for os in opponent_moves])
     
     game = nash.Game(row_player_payoffs, col_player_payoffs)
@@ -492,7 +493,7 @@ def find_nash_equilibrium_strategy(moves: List[dict], opponent_moves: List[dict]
             i = 0
             if  nash_eq_prob > 0:
                 nash_equilibria['nash_equilibria_strategies'].append({
-                            'computer_strategy': {
+                            'nash_eq_strategy': {
                                 'name':moves[i].get('name'),
                                 'nash_eq_probability':nash_eq_prob
                             }
@@ -517,9 +518,9 @@ def get_a_random_move_from_nash_equilibrium_strategy(nash_equilibria: dict, move
     move = np.random.choice(nash_equilibria['nash_equilibria_strategies'])
 
     for m in moves:
-        if m['name'] == move['computer_strategy']['name']:
-            m['nash_eq_probability'] = move['computer_strategy']['nash_eq_probability']
-            m['probability'] = move['computer_strategy']['nash_eq_probability']
+        if m['name'] == move['nash_eq_strategy']['name']:
+            m['nash_eq_probability'] = move['nash_eq_strategy']['nash_eq_probability']
+            m['probability'] = move['nash_eq_strategy']['nash_eq_probability']
             return m
 
 def refresh_equaliser_if_needed_using_indifference_principles(computer_payoff_matrix: np.ndarray, user_payoff_matrix: np.ndarray, 
@@ -564,42 +565,64 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
 
     if PHASE_1_START <= round_idx <= PHASE_1_END:  # Phase 1: Nash Equilibrium
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
-        computer_move = computer_dominant if computer_dominant else get_a_random_move_from_nash_equilibrium_strategy(
-            find_nash_equilibrium_strategy(
-                game['computer_moves'], game['user_moves'], game['payoff_matrix']),
-            game['computer_moves'])
-        if computer_move is None:
-            computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, game['payoff_matrix'])
-        if computer_move is None:
-            computer_move = get_a_random_move(game['computer_moves'])
+        # Play dominant move randomly (50% chance) instead of always
+        if computer_dominant and random.random() < 0.6:
+            computer_move = computer_dominant
+        else:
+            computer_move = get_a_random_move_from_nash_equilibrium_strategy(
+                find_nash_equilibrium_strategy(
+                    game['computer_moves'], game['user_moves'], game['payoff_matrix']),
+                game['computer_moves'])
+            if computer_move is None:
+                computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, 0.3, game['payoff_matrix'])
+            if computer_move is None:
+                computer_move = get_a_random_move(game['computer_moves'])
 
     elif PHASE_2_START <= round_idx <= PHASE_2_END:  # Phase 2: Greedy Response
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
-        computer_move = computer_dominant if computer_dominant else find_best_response_using_epsilon_greedy(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
-        if computer_move is None:
-            computer_move = get_a_random_move(game['computer_moves'])
+        # Play dominant move randomly (40% chance) instead of always
+        if computer_dominant and random.random() < 0.4:
+            computer_move = computer_dominant
+        else:
+            epsilon = 0.3 if round_idx < 50 else 0.15   
+            computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon, game['payoff_matrix'])
+            if computer_move is None:
+                computer_move = get_a_random_move(game['computer_moves'])
 
     else:  # Phase 3: Mixed Strategy
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
-        computer_move = computer_dominant if computer_dominant else get_the_next_move_based_on_mixed_strartegy_probability_indifference(
-                game['computer_moves'],
-                game['user_moves'],
-                game['payoff_matrix'],
-                game['state'],
-                user_support=None        # plug in your support rule
-            )
-        if computer_move is None:
-            computer_move = get_a_random_move(game['computer_moves'])
+        # Play dominant move randomly (30% chance) instead of always
+        if computer_dominant and random.random() < 0.2:
+            computer_move = computer_dominant
+        else:
+            computer_move = get_the_next_move_based_on_mixed_strartegy_probability_indifference(
+                    game['computer_moves'],
+                    game['user_moves'],
+                    game['payoff_matrix'],
+                    game['state'],
+                    user_support=None        # plug in your support rule
+                )
+            if computer_move is None:
+                computer_move = get_a_random_move(game['computer_moves'])
 
     game['state']['last_computer_move'] = computer_move
     game['state']['round_idx'] = round_idx
 
-    # be defensive against the user's dominant move - so override the chosen computer's move with the security level response
+    # be defensive against the user's dominant move - so override the chosen computer's move with the security level response - do it at 50% chance, other times play Dominant move
     user_dominant = check_dominant_move(game['user_moves'], computer_move, game['payoff_matrix'])
     if user_dominant and user_move == user_dominant:
-        security_level_response = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
-        computer_move = security_level_response if security_level_response else computer_move
-        game['state']['last_computer_move'] = computer_move
+        # 50% chance to play dominant move when user plays dominant move - other times play safe
+        if random.random() < 0.5:
+            security_level_response = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
+            computer_move = security_level_response if security_level_response else computer_move
+            game['state']['last_computer_move'] = computer_move
+        else:
+            computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
+            if computer_dominant:
+                computer_move = computer_dominant
+            else:
+                computer_move = get_a_random_move(game['computer_moves'])
+            game['state']['last_computer_move'] = computer_move
 
     return user_move, computer_move
 
@@ -616,6 +639,10 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
     iteration_moves = GameMoves()
     final_user_payoff = 0
     final_computer_payoff = 0
+    
+    # Initialize game logger
+    logger = get_game_logger()
+    session_id = logger.start_game_session(game_id or "unknown_game", game)
     
     for i in range(PHASE_3_END):
         user_move, computer_move = play_game_round(game, i)
@@ -645,16 +672,48 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
 
         print(f"User payoff: {final_user_payoff}, Computer payoff: {final_computer_payoff}")
         
+        # Determine round winner and phase
+        round_winner = "tie"
+        if user_payoff > computer_payoff:
+            round_winner = "user"
+        elif computer_payoff > user_payoff:
+            round_winner = "computer"
+        
+        # Determine current phase
+        if PHASE_1_START <= i <= PHASE_1_END:
+            phase = "Phase 1 (Nash Equilibrium)"
+        elif PHASE_2_START <= i <= PHASE_2_END:
+            phase = "Phase 2 (Greedy Response)"
+        else:
+            phase = "Phase 3 (Mixed Strategy)"
+        
+        # Log the move
+        # Convert numpy types to Python types for JSON serialization
+        user_payoff_python = float(user_payoff) if hasattr(user_payoff, 'item') else user_payoff
+        computer_payoff_python = float(computer_payoff) if hasattr(computer_payoff, 'item') else computer_payoff
+        final_user_payoff_python = float(final_user_payoff) if hasattr(final_user_payoff, 'item') else final_user_payoff
+        final_computer_payoff_python = float(final_computer_payoff) if hasattr(final_computer_payoff, 'item') else final_computer_payoff
+        
+        logger.log_move(
+            round_number=i + 1,
+            phase=phase,
+            user_move=user_move,
+            computer_move=computer_move,
+            user_payoff=user_payoff_python,
+            computer_payoff=computer_payoff_python,
+            round_winner=round_winner,
+            running_user_total=final_user_payoff_python,
+            running_computer_total=final_computer_payoff_python,
+            game_context={
+                "game_id": game_id,
+                "strategy_settings": game.get('user_strategy_settings', {}),
+                "last_computer_move": game['state'].get('last_computer_move', {}).get('name', 'None')
+            }
+        )
+        
         # Emit real-time update via WebSocket if available
         if socketio and game_id:
-            round_winner = "tie"
-            if user_payoff > computer_payoff:
-                round_winner = "user"
-                print(f"User won the round")
-            elif computer_payoff > user_payoff:
-                round_winner = "computer"
-                print(f"Computer won the round")
-            
+            print(f"User won the round" if round_winner == "user" else f"Computer won the round" if round_winner == "computer" else "Round was a tie")
             print(f"Round winner: {round_winner}")
             update_data = {
                 "type": "round_update",
@@ -682,6 +741,12 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
             # Add delay between rounds for better real-time experience
             if round_delay > 0:
                 time.sleep(round_delay)
+
+    # End the game session and save logs
+    # Convert numpy types to Python types for JSON serialization
+    final_user_payoff_python = float(final_user_payoff) if hasattr(final_user_payoff, 'item') else final_user_payoff
+    final_computer_payoff_python = float(final_computer_payoff) if hasattr(final_computer_payoff, 'item') else final_computer_payoff
+    logger.end_game_session(final_user_payoff_python, final_computer_payoff_python)
 
     return {
         'final_user_payoff': final_user_payoff,
