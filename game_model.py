@@ -89,6 +89,19 @@ class GameState(BaseModel):
         return v
 
 
+class Country(BaseModel):
+    """Model for country information"""
+    name: str = Field(..., description="Country name")
+    flag: str = Field(..., description="Country flag emoji")
+    code: str = Field(..., description="Country code")
+
+
+class ComputerProfile(BaseModel):
+    """Model for computer profile information"""
+    name: str = Field(..., description="Profile name")
+    settings: Dict = Field(..., description="Profile settings")
+
+
 class GameModel(BaseModel):
     """Complete game model for the trade war game theory simulation"""
     
@@ -100,6 +113,11 @@ class GameModel(BaseModel):
     # Strategy and state
     user_strategy_settings: UserStrategySettings = Field(..., description="User strategy configuration")
     state: GameState = Field(default_factory=GameState, description="Internal game state")
+    
+    # Additional fields for UI integration
+    computer_profile_name: Optional[str] = Field(None, description="Computer profile name")
+    computer_profile: Optional[ComputerProfile] = Field(None, description="Computer profile details")
+    countries: Optional[Dict[str, Country]] = Field(None, description="User and computer countries")
 
     @field_validator('user_moves')
     @classmethod
@@ -153,13 +171,23 @@ class GameModel(BaseModel):
 
     def to_dict(self) -> Dict:
         """Convert the Pydantic model to a dictionary for use with game_theory functions"""
-        return {
+        result = {
             'user_moves': [move.model_dump() for move in self.user_moves],
             'computer_moves': [move.model_dump() for move in self.computer_moves],
             'payoff_matrix': [entry.model_dump() for entry in self.payoff_matrix],
             'user_strategy_settings': self.user_strategy_settings.model_dump(),
             'state': self.state.model_dump()
         }
+        
+        # Add optional fields if they exist
+        if self.computer_profile_name is not None:
+            result['computer_profile_name'] = self.computer_profile_name
+        if self.computer_profile is not None:
+            result['computer_profile'] = self.computer_profile.model_dump()
+        if self.countries is not None:
+            result['countries'] = {k: v.model_dump() for k, v in self.countries.items()}
+            
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'GameModel':
@@ -169,7 +197,7 @@ class GameModel(BaseModel):
     model_config = {
         "use_enum_values": True,
         "validate_assignment": True,
-        "extra": "forbid"  # Don't allow extra fields
+        "extra": "allow"  # Allow extra fields for UI integration
     }
 
 

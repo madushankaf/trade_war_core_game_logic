@@ -1,0 +1,84 @@
+export const profiles = {
+  "Hawkish": {
+    "phases": { "p1": [0, 20], "p2": [21, 120], "p3": [121, 200] },
+    "dominant_probabilities": { "p1": 0.9, "p2": 0.7, "p3": 0.4 },
+    "epsilon_schedule": { "type": "piecewise", "values": { "early": 0.35, "late": 0.20 }, "switch_round": 50 },
+    "security_level": { "trigger": { "user_dominant": true, "payoff_gap_lt": -0.7 }, "prob": 0.3 },
+    "retaliation": { "user_defected_prev": { "prob": 0.9, "duration": 2 } },
+    "mixed_strategy": { "refresh_every": 5, "bias": { "toward": "defect", "amount": 0.15 } },
+    "description": "Aggressive and exploitative; probes for weakness and punishes fast."
+  },
+
+  "Dovish": {
+    "phases": { "p1": [0, 12], "p2": [13, 80], "p3": [81, 200] },
+    "dominant_probabilities": { "p1": 0.2, "p2": 0.15, "p3": 0.05 },
+    "epsilon_schedule": { "type": "linear", "start": 0.1, "end": 0.05, "end_round": 60 },
+    "security_level": { "trigger": { "user_dominant_streak": 2 }, "prob": 0.6 },
+    "retaliation": { "user_defected_prev": { "prob": 0.25, "duration": 1 } },
+    "mixed_strategy": { "refresh_every": 12, "bias": { "toward": "cooperate", "amount": 0.15 } },
+    "description": "Peaceful, maintains stability; rarely escalates and forgives quickly."
+  },
+
+  "Opportunist": {
+    "phases": { "p1": [0, 15], "p2": [16, 90], "p3": [91, 200] },
+    "dominant_probabilities": { "p1": 0.6, "p2": 0.5, "p3": 0.2 },
+    "epsilon_schedule": { "type": "decay", "base": 0.5, "floor": 0.1, "tau": 60 },
+    "security_level": { "trigger": { "payoff_gap_lt": -0.5 }, "prob": 0.35 },
+    "retaliation": {
+      "user_coop_streak_ge": { "streak": 8, "oneshot_defect_prob": 0.6 },
+      "user_defected_prev": { "prob": 0.3, "duration": 1 }
+    },
+    "mixed_strategy": { "refresh_every": 8, "bias": { "toward": "defect", "amount": 0.07 } },
+    "description": "Adaptive and calculated; exploits predictable cooperation, then restores trust."
+  },
+
+  "TitForTatPlus": {
+    "phases": { "p1": [0, 10], "p2": [11, 80], "p3": [81, 200] },
+    "dominant_probabilities": { "p1": 0.3, "p2": 0.2, "p3": 0.1 },
+    "epsilon_schedule": { "type": "constant", "value": 0.05 },
+    "security_level": { "trigger": { "payoff_gap_lt": -1.0 }, "prob": 0.25 },
+    "retaliation": { "user_defected_prev": { "prob": 0.9, "duration": 1 } },
+    "mixed_strategy": { "refresh_every": 10, "bias": { "toward": "neutral", "amount": 0.0 } },
+    "description": "Classic reciprocal behavior with minimal noise; mirrors opponent faithfully."
+  },
+
+  "GrimTriggerPlus": {
+    "phases": { "p1": [0, 12], "p2": [13, 60], "p3": [61, 200] },
+    "dominant_probabilities": { "p1": 0.7, "p2": 0.6, "p3": 0.4 },
+    "epsilon_schedule": { "type": "constant", "value": 0.05 },
+    "security_level": { "trigger": { "in_punish_mode": true, "payoff_gap_lt": -0.5 }, "prob": 0.5 },
+    "retaliation": { "user_defected_first": { "punish_rounds": 5, "prob": 0.85 } },
+    "mixed_strategy": { "refresh_every": 6, "bias": { "toward": "defect", "amount": 0.1 } },
+    "description": "Harsh punisher; once betrayed, retaliates strongly before testing ceasefire."
+  },
+
+  "GenerousTFT": {
+    "phases": { "p1": [0, 15], "p2": [16, 100], "p3": [101, 200] },
+    "dominant_probabilities": { "p1": 0.25, "p2": 0.15, "p3": 0.05 },
+    "epsilon_schedule": { "type": "linear", "start": 0.12, "end": 0.06, "end_round": 80 },
+    "security_level": { "trigger": { "avg_payoff_gap_lt": -0.4, "consecutive_losses": 2 }, "prob": 0.3 },
+    "retaliation": { "user_defected_prev": { "prob": 0.3, "duration": 1 } },
+    "mixed_strategy": { "refresh_every": 10, "bias": { "toward": "cooperate", "amount": 0.1 } },
+    "description": "Forgiving and tolerant; maintains cooperation even under noise or mistakes."
+  },
+
+  "SecurityFirst": {
+    "phases": { "p1": [0, 15], "p2": [16, 100], "p3": [101, 200] },
+    "dominant_probabilities": { "p1": 0.25, "p2": 0.2, "p3": 0.1 },
+    "epsilon_schedule": { "type": "constant", "value": 0.05 },
+    "security_level": { "trigger": { "user_dominant": true, "payoff_gap_lt": -0.2 }, "prob": 0.7 },
+    "retaliation": { "user_defected_prev": { "prob": 0.6, "duration": 1 } },
+    "mixed_strategy": { "refresh_every": 7, "bias": { "toward": "neutral", "amount": 0.0 } },
+    "description": "Minimax-oriented; avoids exploitation, prioritizes safe and conservative play."
+  },
+
+  "NoisyExplorer": {
+    "phases": { "p1": [0, 20], "p2": [21, 120], "p3": [121, 200] },
+    "dominant_probabilities": { "p1": 0.5, "p2": 0.4, "p3": 0.2 },
+    "epsilon_schedule": { "type": "linear_decay", "start": 0.6, "end": 0.1, "end_round": 150 },
+    "security_level": { "trigger": { "payoff_gap_lt": -1.0 }, "prob": 0.2 },
+    "retaliation": { "user_defected_last_2": { "prob": 0.5 } },
+    "mixed_strategy": { "refresh_every": 3, "bias": { "toward": "entropy", "amount": 0.05 } },
+    "description": "High exploration for learning or testing; balances randomness with safety."
+  }
+};

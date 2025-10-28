@@ -544,11 +544,79 @@ def refresh_equaliser_if_needed_using_indifference_principles(computer_payoff_ma
         return None
     return q_eq
 
+def calculate_epsilon(computer_profile: dict, round_idx: int) -> float:
+    """
+    Calculate epsilon value based on the computer profile's epsilon schedule.
+    
+    Args:
+        computer_profile: Computer profile dictionary
+        round_idx: Current round index
+        
+    Returns:
+        Epsilon value for the current round
+    """
+    epsilon_config = computer_profile['epsilon_schedule']
+    schedule_type = epsilon_config['type']
+    
+    if schedule_type == 'constant':
+        return epsilon_config['value']
+    
+    elif schedule_type == 'linear':
+        start = epsilon_config['start']
+        end = epsilon_config['end']
+        end_round = epsilon_config['end_round']
+        
+        if round_idx >= end_round:
+            return end
+        else:
+            # Linear interpolation
+            progress = round_idx / end_round
+            return start + (end - start) * progress
+    
+    elif schedule_type == 'decay':
+        base = epsilon_config['base']
+        floor = epsilon_config['floor']
+        tau = epsilon_config['tau']
+        
+        # Exponential decay: epsilon = floor + (base - floor) * exp(-round_idx / tau)
+        import math
+        return floor + (base - floor) * math.exp(-round_idx / tau)
+    
+    elif schedule_type == 'piecewise':
+        values = epsilon_config['values']
+        switch_round = epsilon_config['switch_round']
+        
+        if round_idx < switch_round:
+            return values['early']
+        else:
+            return values['late']
+    
+    elif schedule_type == 'linear_decay':
+        start = epsilon_config['start']
+        end = epsilon_config['end']
+        end_round = epsilon_config['end_round']
+        
+        if round_idx >= end_round:
+            return end
+        else:
+            # Linear decay (opposite of linear growth)
+            progress = round_idx / end_round
+            return start - (start - end) * progress
+    
+    else:
+        # Fallback to constant value
+        return 0.1
+
+
 def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
     """
     Play a single round of the game.
     Returns the user move and computer move for the round.
     """
+    computer_profile = game['computer_profile']
+    if computer_profile is None:
+        raise ValueError("Computer profile is not set")
+    
     if round_idx == 0:
         game['state']['last_computer_move'] = None
         game['state']['round_idx'] = 0
@@ -563,10 +631,10 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
         user_move = get_a_random_move(game['user_moves'])
 
 
-    if PHASE_1_START <= round_idx <= PHASE_1_END:  # Phase 1: Nash Equilibrium
+    if computer_profile['phases']['p1'][0] <= round_idx <= computer_profile['phases']['p1'][1]:  # Phase 1: Nash Equilibrium
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
         # Play dominant move randomly (50% chance) instead of always
-        if computer_dominant and random.random() < 0.6:
+        if computer_dominant and random.random() < computer_profile['dominant_probabilities']['p1']:
             computer_move = computer_dominant
         else:
             computer_move = get_a_random_move_from_nash_equilibrium_strategy(
@@ -574,25 +642,26 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
                     game['computer_moves'], game['user_moves'], game['payoff_matrix']),
                 game['computer_moves'])
             if computer_move is None:
-                computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, 0.3, game['payoff_matrix'])
+                epsilon = calculate_epsilon(computer_profile, round_idx)
+                computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon, game['payoff_matrix'])
             if computer_move is None:
                 computer_move = get_a_random_move(game['computer_moves'])
 
-    elif PHASE_2_START <= round_idx <= PHASE_2_END:  # Phase 2: Greedy Response
+    elif computer_profile['phases']['p2'][0] <= round_idx <= computer_profile['phases']['p2'][1]:  # Phase 2: Greedy Response
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
         # Play dominant move randomly (40% chance) instead of always
-        if computer_dominant and random.random() < 0.4:
+        if computer_dominant and random.random() < computer_profile['dominant_probabilities']['p2']:
             computer_move = computer_dominant
         else:
-            epsilon = 0.3 if round_idx < 50 else 0.15   
+            epsilon = calculate_epsilon(computer_profile, round_idx)
             computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon, game['payoff_matrix'])
             if computer_move is None:
                 computer_move = get_a_random_move(game['computer_moves'])
 
-    else:  # Phase 3: Mixed Strategy
+    elif computer_profile['phases']['p3'][0] <= round_idx <= computer_profile['phases']['p3'][1]:  # Phase 3: Mixed Strategy
         computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
         # Play dominant move randomly (30% chance) instead of always
-        if computer_dominant and random.random() < 0.2:
+        if computer_dominant and random.random() < computer_profile['dominant_probabilities']['p3']:
             computer_move = computer_dominant
         else:
             computer_move = get_the_next_move_based_on_mixed_strartegy_probability_indifference(
@@ -612,7 +681,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
     user_dominant = check_dominant_move(game['user_moves'], computer_move, game['payoff_matrix'])
     if user_dominant and user_move == user_dominant:
         # 50% chance to play dominant move when user plays dominant move - other times play safe
-        if random.random() < 0.5:
+        if random.random() < computer_profile['security_level']['prob']:
             security_level_response = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
             computer_move = security_level_response if security_level_response else computer_move
             game['state']['last_computer_move'] = computer_move
@@ -636,6 +705,11 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
         game_id: Optional game ID for WebSocket room targeting
         round_delay: Delay in seconds between rounds (default: 0.5s)
     """
+
+    computer_profile = game['computer_profile']
+    if computer_profile is None:
+        raise ValueError("Computer profile is not set")
+    
     iteration_moves = GameMoves()
     final_user_payoff = 0
     final_computer_payoff = 0
@@ -644,7 +718,7 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
     logger = get_game_logger()
     session_id = logger.start_game_session(game_id or "unknown_game", game)
     
-    for i in range(PHASE_3_END):
+    for i in range(computer_profile['phases']['p3'][1]):
         user_move, computer_move = play_game_round(game, i)
         if user_move is None:
             continue
@@ -680,12 +754,14 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
             round_winner = "computer"
         
         # Determine current phase
-        if PHASE_1_START <= i <= PHASE_1_END:
+        if computer_profile['phases']['p1'][0] <= i <= computer_profile['phases']['p1'][1]:
             phase = "Phase 1 (Nash Equilibrium)"
-        elif PHASE_2_START <= i <= PHASE_2_END:
+        elif computer_profile['phases']['p2'][0] <= i <= computer_profile['phases']['p2'][1]:
             phase = "Phase 2 (Greedy Response)"
-        else:
+        elif computer_profile['phases']['p3'][0] <= i <= computer_profile['phases']['p3'][1]:
             phase = "Phase 3 (Mixed Strategy)"
+        else:
+            phase = "Unknown Phase"
         
         # Log the move
         # Convert numpy types to Python types for JSON serialization

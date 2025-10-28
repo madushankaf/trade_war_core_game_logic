@@ -9,10 +9,12 @@ import threading
 from game_moves import GameMoves
 from game_theory import play_full_game
 from game_model import GameModel
+from profile_manager import ProfileManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+profile_manager = ProfileManager()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -231,7 +233,17 @@ def play_game(game_id):
 
         # Get round delay from query parameter (default: 0.5 seconds)
         round_delay = float(request.args.get('delay', '0.5'))
-        
+
+        computer_profile_name = data.get('computer_profile_name')
+        if not computer_profile_name:
+            return jsonify({'error': 'Computer profile name is required'}), 400
+
+        computer_profile = profile_manager.get_profile(computer_profile_name)
+        if not computer_profile:
+            return jsonify({'error': f'Computer profile not found: {computer_profile_name}'}), 400
+
+        game['computer_profile_name'] = computer_profile_name
+        game['computer_profile'] = computer_profile.to_dict()
         # Run game with real-time updates in background thread
         def run_game_with_websocket():
             try:

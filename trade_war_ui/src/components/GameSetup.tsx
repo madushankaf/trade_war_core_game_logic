@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { Country, StrategyType } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
+import { profiles } from '../data/profiles';
 
 interface GameSetupProps {
   onGameStart: (gameData: any) => void;
@@ -22,6 +23,7 @@ interface GameSetupProps {
 const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   const [userCountry, setUserCountry] = useState<Country | null>(null);
   const [computerCountry, setComputerCountry] = useState<Country | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<string>('');
   const [strategy, setStrategy] = useState<StrategyType>('copy_cat');
   const [firstMove, setFirstMove] = useState<string>('open_dialogue');
   const [cooperationStart, setCooperationStart] = useState<number>(2);
@@ -71,6 +73,11 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
       alert('Please select both countries');
       return;
     }
+    
+    if (!selectedProfile) {
+      alert('Please select a computer behavior profile');
+      return;
+    }
 
     // Normalize probabilities before starting game
     if (strategy === 'mixed') {
@@ -103,6 +110,15 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         first_move: firstMove,
         cooperation_start: cooperationStart,
         mixed_strategy_array: strategy === 'mixed' ? selectedMoves : null
+      },
+      computer_profile_name: selectedProfile, // API expects this as top-level field
+      computer_profile: {
+        name: selectedProfile,
+        settings: profiles[selectedProfile as keyof typeof profiles]
+      },
+      countries: {
+        user: userCountry,
+        computer: computerCountry
       },
       state: {
         equalizer_strategy: null,
@@ -181,13 +197,17 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               <Typography variant="h6" gutterBottom>
                 Select Opponent Country
               </Typography>
-              <FormControl fullWidth>
+              <FormControl fullWidth sx={{ mb: 2 }}>
                 <InputLabel>Opponent Country</InputLabel>
                 <Select
                   value={computerCountry?.code || ''}
                   onChange={(e) => {
                     const country = countries.find(c => c.code === e.target.value);
                     setComputerCountry(country || null);
+                    // Reset profile selection when country changes
+                    if (!country) {
+                      setSelectedProfile('');
+                    }
                   }}
                 >
                   {countries.map((country) => (
@@ -197,9 +217,49 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   ))}
                 </Select>
               </FormControl>
+              
+              {/* Profile Selection - Only enabled when opponent country is selected */}
+              <FormControl fullWidth disabled={!computerCountry}>
+                <InputLabel>Computer Behavior Profile</InputLabel>
+                <Select
+                  value={selectedProfile}
+                  onChange={(e) => setSelectedProfile(e.target.value)}
+                  disabled={!computerCountry}
+                >
+                  {Object.entries(profiles).map(([profileName, profileData]) => (
+                    <MenuItem key={profileName} value={profileName}>
+                      <Box>
+                        <Typography variant="subtitle1">{profileName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {profileData.description}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </CardContent>
           </Card>
         </Box>
+
+        {/* Profile Description - Only show when profile is selected */}
+        {selectedProfile && (
+          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
+            <Card sx={{ bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.200' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom color="primary">
+                  🤖 Selected Computer Profile: {selectedProfile}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  {profiles[selectedProfile as keyof typeof profiles]?.description}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  This profile will determine how the computer opponent behaves during the game.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
 
         {/* Strategy Configuration */}
         <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
@@ -355,6 +415,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
             disabled={
               !userCountry || 
               !computerCountry || 
+              !selectedProfile ||
               selectedMoves.length < 2 || 
               (strategy === 'mixed' && Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01)
             }

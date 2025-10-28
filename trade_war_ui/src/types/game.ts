@@ -38,6 +38,15 @@ export interface GameModel {
   computer_moves: Move[];
   payoff_matrix: PayoffEntry[];
   user_strategy_settings: UserStrategySettings;
+  computer_profile_name: string;
+  computer_profile?: {
+    name: string;
+    settings: any;
+  };
+  countries?: {
+    user: Country;
+    computer: Country;
+  };
   state: GameState;
 }
 
