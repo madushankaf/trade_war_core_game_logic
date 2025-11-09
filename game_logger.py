@@ -25,6 +25,14 @@ from pathlib import Path
 import threading
 from collections import defaultdict
 
+# Try to import numpy for type checking
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+    np = None
+
 
 @dataclass
 class GameMoveLog:
@@ -336,19 +344,92 @@ class GameLogger:
         
         # Convert numpy types to Python types for JSON serialization
         def convert_numpy_types(obj):
-            if hasattr(obj, 'item'):
-                return obj.item()
-            elif isinstance(obj, dict):
-                return {key: convert_numpy_types(value) for key, value in obj.items()}
-            elif isinstance(obj, list):
+            # Handle None first
+            if obj is None:
+                return None
+            
+            # Handle numpy arrays and scalar types (check first before nested structures)
+            if NUMPY_AVAILABLE:
+                try:
+                    if isinstance(obj, np.ndarray):
+                        # Convert numpy array to list
+                        return [convert_numpy_types(item) for item in obj.tolist()]
+                    elif isinstance(obj, (np.integer, np.floating, np.complexfloating, np.number)):
+                        # Convert numpy scalar types to Python native types
+                        return obj.item()
+                    elif isinstance(obj, np.bool_):
+                        # Convert numpy bool to Python bool
+                        return bool(obj)
+                    elif isinstance(obj, np.str_):
+                        # Convert numpy string to Python string
+                        return str(obj)
+                except (AttributeError, ValueError, TypeError, RuntimeError) as e:
+                    # If numpy conversion fails, continue to other checks
+                    logging.debug(f"NumPy conversion failed for {type(obj)}: {e}")
+            
+            # Handle nested structures (check before item() method to avoid recursion issues)
+            if isinstance(obj, dict):
+                return {str(key): convert_numpy_types(value) for key, value in obj.items()}
+            elif isinstance(obj, (list, tuple)):
                 return [convert_numpy_types(item) for item in obj]
-            else:
-                return obj
+            elif isinstance(obj, set):
+                # Convert set to list, sorting for consistency
+                try:
+                    return [convert_numpy_types(item) for item in sorted(obj)]
+                except TypeError:
+                    # If sorting fails (e.g., mixed types), convert without sorting
+                    return [convert_numpy_types(item) for item in obj]
+            
+            # Try to convert objects with item() method (numpy scalars, etc.)
+            # Only try this for scalar-like objects, not containers
+            if not isinstance(obj, (dict, list, tuple, set, str, bytes)):
+                if hasattr(obj, 'item'):
+                    item_method = getattr(obj, 'item', None)
+                    if callable(item_method):
+                        try:
+                            result = obj.item()
+                            # Recursively convert the result in case it's also a numpy type
+                            return convert_numpy_types(result)
+                        except (AttributeError, ValueError, TypeError, RuntimeError) as e:
+                            # If item() fails, try to convert to string or return as-is
+                            logging.debug(f"item() method failed for {type(obj)}: {e}")
+                            try:
+                                # Try converting to native Python type
+                                if hasattr(obj, '__float__'):
+                                    return float(obj)
+                                elif hasattr(obj, '__int__'):
+                                    return int(obj)
+                                elif hasattr(obj, '__str__'):
+                                    return str(obj)
+                            except (ValueError, TypeError):
+                                pass
+            
+            # Return as-is if no conversion needed or conversion failed
+            return obj
         
-        session_dict = convert_numpy_types(session_dict)
-        
-        with open(log_file, 'w') as f:
-            json.dump(session_dict, f, indent=2)
+        try:
+            session_dict = convert_numpy_types(session_dict)
+            
+            with open(log_file, 'w') as f:
+                json.dump(session_dict, f, indent=2, default=str)
+        except (TypeError, ValueError) as e:
+            # If JSON serialization still fails, log the error and save a simplified version
+            self.logger.error(f"Failed to serialize session log to JSON: {e}")
+            self.logger.debug(f"Problematic data type: {type(session_dict)}")
+            
+            # Try to save a simplified version with error info
+            error_dict = {
+                "error": "Failed to serialize game session log",
+                "error_message": str(e),
+                "session_id": session_log.session_id,
+                "timestamp": session_log.start_time,
+            }
+            
+            try:
+                with open(log_file, 'w') as f:
+                    json.dump(error_dict, f, indent=2)
+            except Exception as save_error:
+                self.logger.error(f"Failed to save error log: {save_error}")
     
     def _save_analysis_log(self, session_log: GameSessionLog) -> None:
         """Save CSV file for analysis"""

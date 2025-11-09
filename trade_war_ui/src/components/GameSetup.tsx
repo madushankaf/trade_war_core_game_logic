@@ -15,6 +15,12 @@ import {
 import { Country, StrategyType } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
 import { profiles } from '../data/profiles';
+import {
+  buildPayoffMatrix,
+  countryPairExists,
+  getAvailableMovesForPair,
+  getMoveTypeFromUiName,
+} from '../utils/payoffMapper';
 
 interface GameSetupProps {
   onGameStart: (gameData: any) => void;
@@ -29,6 +35,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   const [cooperationStart, setCooperationStart] = useState<number>(2);
   const [selectedMoves, setSelectedMoves] = useState<string[]>(['open_dialogue', 'raise_tariffs', 'wait_and_see']);
   const [moveProbabilities, setMoveProbabilities] = useState<Record<string, number>>({});
+  const [availableMoves, setAvailableMoves] = useState<string[]>(defaultMoves.map(m => m.name));
+  const [countryPairWarning, setCountryPairWarning] = useState<string>('');
 
   const strategies = [
     { value: 'copy_cat', label: 'Copy Cat', description: 'Copy your opponent\'s last move' },
@@ -37,6 +45,41 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
     { value: 'random', label: 'Random', description: 'Choose moves randomly' },
     { value: 'mixed', label: 'Mixed Strategy', description: 'Use probability-based strategy' }
   ];
+
+  // Update available moves when countries are selected
+  React.useEffect(() => {
+    if (userCountry && computerCountry) {
+      const pairExists = countryPairExists(userCountry.name, computerCountry.name);
+      
+      if (pairExists) {
+        const moves = getAvailableMovesForPair(userCountry.name, computerCountry.name);
+        setAvailableMoves(moves.length > 0 ? moves : defaultMoves.map(m => m.name));
+        setCountryPairWarning('');
+        
+        // Filter selected moves to only include available moves
+        setSelectedMoves(prev => prev.filter(move => 
+          moves.length > 0 ? moves.includes(move) : true
+        ));
+        
+        // Reset firstMove if it's not in available moves
+        setFirstMove(prev => {
+          if (moves.length > 0 && !moves.includes(prev)) {
+            return moves[0];
+          }
+          return prev;
+        });
+      } else {
+        // Country pair not in data, use all moves with warning
+        setAvailableMoves(defaultMoves.map(m => m.name));
+        setCountryPairWarning(
+          `Warning: Payoff data not available for ${userCountry.name} vs ${computerCountry.name}. Using default payoffs.`
+        );
+      }
+    } else {
+      setAvailableMoves(defaultMoves.map(m => m.name));
+      setCountryPairWarning('');
+    }
+  }, [userCountry, computerCountry]);
 
   // Initialize probabilities when selected moves change
   React.useEffect(() => {
@@ -84,27 +127,41 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
       normalizeProbabilities();
     }
 
+    // Build dynamic payoff matrix based on selected countries and moves
+    const payoffMatrix = userCountry && computerCountry
+      ? buildPayoffMatrix(
+          userCountry.name,
+          computerCountry.name,
+          selectedMoves,
+          selectedMoves
+        )
+      : generatePayoffMatrix(selectedMoves); // Fallback if countries not selected
+
     // Create game data structure
     const gameData = {
       user_moves: selectedMoves.map(moveName => {
+        // Use move type from payoff data if available, otherwise use defaultMoves
+        const moveType = getMoveTypeFromUiName(moveName);
         const moveInfo = defaultMoves.find(m => m.name === moveName);
         return {
           name: moveName,
-          type: moveInfo?.type || 'cooperative',
+          type: moveType || moveInfo?.type || 'cooperative',
           probability: strategy === 'mixed' ? moveProbabilities[moveName] : 1 / selectedMoves.length,
           player: 'user' as const
         };
       }),
       computer_moves: selectedMoves.map(moveName => {
+        // Use move type from payoff data if available, otherwise use defaultMoves
+        const moveType = getMoveTypeFromUiName(moveName);
         const moveInfo = defaultMoves.find(m => m.name === moveName);
         return {
           name: moveName,
-          type: moveInfo?.type || 'cooperative',
+          type: moveType || moveInfo?.type || 'cooperative',
           probability: strategy === 'mixed' ? moveProbabilities[moveName] : 1 / selectedMoves.length,
           player: 'computer' as const
         };
       }),
-      payoff_matrix: generatePayoffMatrix(selectedMoves),
+      payoff_matrix: payoffMatrix,
       user_strategy_settings: {
         strategy,
         first_move: firstMove,
@@ -242,6 +299,19 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
           </Card>
         </Box>
 
+        {/* Country Pair Warning */}
+        {countryPairWarning && (
+          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
+            <Card sx={{ bgcolor: 'warning.light', border: '1px solid', borderColor: 'warning.main' }}>
+              <CardContent>
+                <Typography variant="body2" color="warning.dark">
+                  ⚠️ {countryPairWarning}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
         {/* Profile Description - Only show when profile is selected */}
         {selectedProfile && (
           <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
@@ -294,11 +364,13 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   value={firstMove}
                   onChange={(e) => setFirstMove(e.target.value)}
                 >
-                  {defaultMoves.map((move) => (
-                    <MenuItem key={move.name} value={move.name}>
-                      {move.name.replace('_', ' ').toUpperCase()}
-                    </MenuItem>
-                  ))}
+                  {defaultMoves
+                    .filter(move => availableMoves.includes(move.name))
+                    .map((move) => (
+                      <MenuItem key={move.name} value={move.name}>
+                        {move.name.replace('_', ' ').toUpperCase()}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
 
@@ -327,19 +399,30 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                 Available Moves
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {defaultMoves.map((move) => (
-                  <Chip
-                    key={move.name}
-                    label={`${move.name.replace('_', ' ').toUpperCase()} (${move.type})`}
-                    color={selectedMoves.includes(move.name) ? 'primary' : 'default'}
-                    onClick={() => handleMoveToggle(move.name)}
-                    variant={selectedMoves.includes(move.name) ? 'filled' : 'outlined'}
-                    sx={{ mb: 1 }}
-                  />
-                ))}
+                {defaultMoves.map((move) => {
+                  const isAvailable = availableMoves.includes(move.name);
+                  const moveType = getMoveTypeFromUiName(move.name) || move.type;
+                  return (
+                    <Chip
+                      key={move.name}
+                      label={`${move.name.replace('_', ' ').toUpperCase()} (${moveType})`}
+                      color={selectedMoves.includes(move.name) ? 'primary' : 'default'}
+                      onClick={() => isAvailable && handleMoveToggle(move.name)}
+                      variant={selectedMoves.includes(move.name) ? 'filled' : 'outlined'}
+                      disabled={!isAvailable}
+                      sx={{ mb: 1, opacity: isAvailable ? 1 : 0.5 }}
+                      title={!isAvailable ? 'Move not available for selected country pair' : ''}
+                    />
+                  );
+                })}
               </Box>
               <Typography variant="caption" color="text.secondary">
                 Selected moves: {selectedMoves.length} (minimum 2 required)
+                {userCountry && computerCountry && (
+                  <span>
+                    {' '}• {availableMoves.length} moves available for {userCountry.name} vs {computerCountry.name}
+                  </span>
+                )}
               </Typography>
             </CardContent>
           </Card>

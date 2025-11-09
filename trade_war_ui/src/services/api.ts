@@ -1,6 +1,14 @@
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { GameModel, GameResult } from '../types/game';
+import {
+  buildPayoffMatrix,
+  getMoveTypeFromUiName,
+  countryPairExists,
+  getAvailableMovesForPair,
+} from '../utils/payoffMapper';
+import { defaultMoves } from '../data/countries';
+import { profiles } from '../data/profiles';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5010';
 
@@ -128,13 +136,85 @@ export const gameApi = {
     });
   },
 
-  // Load sample game data
+  // Load sample game data using dynamic payoffs
   loadSampleGame: async (): Promise<GameModel> => {
     try {
-      const response = await fetch('/sample_game_model.json');
-      return await response.json();
+      // Use US vs China as default sample game
+      const userCountryName = 'United States';
+      const computerCountryName = 'China';
+      const defaultProfile = 'Hawkish';
+      
+      // Get available moves for the country pair, or use all default moves
+      const availableMoves = countryPairExists(userCountryName, computerCountryName)
+        ? getAvailableMovesForPair(userCountryName, computerCountryName)
+        : defaultMoves.map(m => m.name);
+      
+      // Use first 3 available moves as sample
+      const sampleMoves = availableMoves.slice(0, 3).length >= 2
+        ? availableMoves.slice(0, 3)
+        : ['open_dialogue', 'raise_tariffs', 'wait_and_see'];
+      
+      // Build payoff matrix dynamically
+      const payoffMatrix = countryPairExists(userCountryName, computerCountryName)
+        ? buildPayoffMatrix(userCountryName, computerCountryName, sampleMoves, sampleMoves)
+        : sampleMoves.flatMap(userMove =>
+            sampleMoves.map(computerMove => ({
+              user_move_name: userMove,
+              computer_move_name: computerMove,
+              payoff: { user: 2, computer: 2 }, // Default fallback
+            }))
+          );
+      
+      // Create sample game model
+      const sampleGame: GameModel = {
+        user_moves: sampleMoves.map(moveName => ({
+          name: moveName,
+          type: getMoveTypeFromUiName(moveName) || defaultMoves.find(m => m.name === moveName)?.type || 'cooperative',
+          probability: 1 / sampleMoves.length,
+          player: 'user' as const,
+        })),
+        computer_moves: sampleMoves.map(moveName => ({
+          name: moveName,
+          type: getMoveTypeFromUiName(moveName) || defaultMoves.find(m => m.name === moveName)?.type || 'cooperative',
+          probability: 1 / sampleMoves.length,
+          player: 'computer' as const,
+        })),
+        payoff_matrix: payoffMatrix,
+        user_strategy_settings: {
+          strategy: 'copy_cat',
+          first_move: sampleMoves[0],
+          cooperation_start: 2,
+          mixed_strategy_array: null,
+        },
+        computer_profile_name: defaultProfile,
+        computer_profile: {
+          name: defaultProfile,
+          settings: profiles[defaultProfile as keyof typeof profiles],
+        },
+        countries: {
+          user: {
+            name: userCountryName,
+            flag: '🇺🇸',
+            code: 'US',
+          },
+          computer: {
+            name: computerCountryName,
+            flag: '🇨🇳',
+            code: 'CN',
+          },
+        },
+        state: {
+          equalizer_strategy: null,
+          round_idx: 0,
+          last_strategy_update: 0,
+          generated_mixed_moves_array: null,
+          last_computer_move: null,
+        },
+      };
+      
+      return sampleGame;
     } catch (error) {
-      console.error('Error loading sample game:', error);
+      console.error('Error generating sample game:', error);
       throw error;
     }
   },
