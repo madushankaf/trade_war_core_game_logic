@@ -3,8 +3,8 @@ name: Frontend Deployment
 on:
   push:
     branches: [ main, master ]
-    # paths:
-    #   - 'trade_war_ui/**'
+    paths:
+      - 'trade_war_ui/**'
   pull_request:
     branches: [ main, master ]
     paths:
@@ -14,7 +14,7 @@ env:
   AWS_REGION: us-east-1
   S3_BUCKET: trade-war-ui
   CLOUDFRONT_DISTRIBUTION_ID: E2TYPOCX6FTZ
-  API_BASE_URL: ${{ secrets.API_BASE_URL }}
+  REACT_APP_API_BASE_URL: https://3nmes2xwrp.us-east-2.awsapprunner.com:5010
 
 jobs:
   deploy:
@@ -36,7 +36,7 @@ jobs:
     - name: Build application
       working-directory: ./trade_war_ui
       env:
-        API_BASE_URL: ${{ env.API_BASE_URL }}
+        REACT_APP_API_BASE_URL: ${{ env.REACT_APP_API_BASE_URL }}
       run: npm run build
 
     - name: Configure AWS credentials
