@@ -65,6 +65,12 @@ def validate_json_data(data):
     
     return True, None
 
+# Health check endpoint
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for load balancers and monitoring"""
+    return jsonify({'status': 'healthy'}), 200
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
@@ -268,4 +274,15 @@ def play_game(game_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5010)
+    import os
+    # Check if running in production
+    flask_env = os.environ.get('FLASK_ENV', 'development')
+    is_production = flask_env == 'production'
+    
+    if is_production:
+        # In production, use eventlet server directly (Gunicorn will be used via CMD in Dockerfile)
+        # But for direct python execution, we'll use eventlet
+        socketio.run(app, debug=False, host='0.0.0.0', port=5010, allow_unsafe_werkzeug=True)
+    else:
+        # In development, use Werkzeug with debug mode
+        socketio.run(app, debug=True, host='0.0.0.0', port=5010)
