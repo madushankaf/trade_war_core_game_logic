@@ -13,6 +13,7 @@ on:
 env:
   AWS_REGION: us-east-1
   S3_BUCKET: trade-war-ui
+  CLOUDFRONT_DISTRIBUTION_ID: E2TYPOCX6FTZ
   API_BASE_URL: ${{ secrets.API_BASE_URL }}
 
 jobs:
@@ -53,6 +54,4 @@ jobs:
     - name: Invalidate CloudFront cache
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       run: |
-        if [ -n "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]; then
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
-        fi 
+        aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*" 

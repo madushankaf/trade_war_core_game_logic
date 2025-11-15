@@ -9,7 +9,7 @@ import {
   LinearProgress,
   Paper
 } from '@mui/material';
-import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
   PlayArrow,
   Pause,
@@ -35,7 +35,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
   const [gameHistory, setGameHistory] = useState<RoundMove[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [chartData, setChartData] = useState<Array<{round: number, userPayoff: number, computerPayoff: number}>>([]);
   const [stepData, setStepData] = useState<Array<{round: number, winner: number, winnerName: string}>>([]);
 
   const totalRounds = 200; // From game_theory.py PHASE_3_END
@@ -45,7 +44,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
     setError(null);
     setIsPlaying(true);
     setGameHistory([]); // Clear previous history
-    setChartData([]); // Clear previous chart data
     setStepData([]); // Clear previous step data
     
     try {
@@ -81,13 +79,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
           
           setGameHistory(prev => [...prev, roundMove]);
           setCurrentRound(roundData.round);
-          
-          // Update chart data with cumulative payoffs
-          setChartData(prev => [...prev, {
-            round: roundData.round,
-            userPayoff: roundData.running_totals.user_total,
-            computerPayoff: roundData.running_totals.computer_total
-          }]);
           
           // Update step function data with round winner
           const winner = roundData.round_winner === 'user' ? 0 : 1;
@@ -245,85 +236,6 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Warning color="error" />
               <Typography color="error">{error}</Typography>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Real-time Stacked Area Chart */}
-      {chartData.length > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 2 }}>
-              Cumulative Payoff Progression – 200 Round Duel
-            </Typography>
-            <Box sx={{ height: 400, width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                  <defs>
-                    <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4A90E2" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#4A90E2" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="computerGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E74C3C" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#E74C3C" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="round" 
-                    domain={[0, 200]}
-                    ticks={[0, 50, 100, 150, 200]}
-                    label={{ value: 'Rounds', position: 'insideBottom', offset: -10 }}
-                    stroke="#666"
-                  />
-                  <YAxis 
-                    label={{ value: 'Cumulative Points', angle: -90, position: 'insideLeft' }}
-                    stroke="#666"
-                  />
-                  <Tooltip 
-                    labelFormatter={(label) => `Round ${label}`}
-                    formatter={(value: number, name: string) => [
-                      value.toFixed(2), 
-                      name === 'userPayoff' ? 'Me' : 'Opponent'
-                    ]}
-                    contentStyle={{
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ paddingTop: '20px' }}
-                    iconType="rect"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="userPayoff"
-                    stackId="1"
-                    stroke="#4A90E2"
-                    strokeWidth={2}
-                    fill="url(#userGradient)"
-                    name="Me"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="computerPayoff"
-                    stackId="1"
-                    stroke="#E74C3C"
-                    strokeWidth={2}
-                    fill="url(#computerGradient)"
-                    name="Opponent"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </Box>
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Watch the dominance shift as strategies evolve over 200 rounds
-              </Typography>
             </Box>
           </CardContent>
         </Card>

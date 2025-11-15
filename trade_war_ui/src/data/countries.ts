@@ -12,29 +12,9 @@ export const countries: Country[] = [
     code: 'CN'
   },
   {
-    name: 'European Union',
-    flag: '🇪🇺',
-    code: 'EU'
-  },
-  {
-    name: 'Japan',
-    flag: '🇯🇵',
-    code: 'JP'
-  },
-  {
     name: 'United Kingdom',
     flag: '🇬🇧',
     code: 'UK'
-  },
-  {
-    name: 'Canada',
-    flag: '🇨🇦',
-    code: 'CA'
-  },
-  {
-    name: 'Australia',
-    flag: '🇦🇺',
-    code: 'AU'
   },
   {
     name: 'India',
@@ -42,14 +22,14 @@ export const countries: Country[] = [
     code: 'IN'
   },
   {
-    name: 'Brazil',
-    flag: '🇧🇷',
-    code: 'BR'
-  },
-  {
     name: 'Russia',
     flag: '🇷🇺',
     code: 'RU'
+  },
+  {
+    name: 'Saudi Arabia',
+    flag: '🇸🇦',
+    code: 'SA'
   }
 ];
 
