@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
-import { GameModel, GameResult } from '../types/game';
+import { GameModel } from '../types/game';
 import {
   buildPayoffMatrix,
   getMoveTypeFromUiName,

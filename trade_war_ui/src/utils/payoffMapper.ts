@@ -48,14 +48,6 @@ function dataToUiMoveName(dataName: string): string {
 }
 
 /**
- * Get move type from data
- */
-function getMoveType(dataName: string): 'cooperative' | 'defective' {
-  const mapping = MOVE_MAPPING.find(m => m.dataName === dataName);
-  return mapping ? mapping.type : 'cooperative';
-}
-
-/**
  * Get available moves for a country pair
  */
 export function getAvailableMovesForPair(
