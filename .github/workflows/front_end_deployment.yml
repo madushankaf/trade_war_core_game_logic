@@ -14,7 +14,7 @@ env:
   AWS_REGION: us-east-1
   S3_BUCKET: trade-war-ui
   CLOUDFRONT_DISTRIBUTION_ID: E2TYPOCX6FTZ
-  REACT_APP_API_BASE_URL: https://3nmes2xwrp.us-east-2.awsapprunner.com:5010
+  REACT_APP_API_BASE_URL: https://trade-war-api-f5hiy6kafa-uc.a.run.app
 
 jobs:
   deploy:
