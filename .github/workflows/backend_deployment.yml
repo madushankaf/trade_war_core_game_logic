@@ -8,16 +8,12 @@ on:
       - 'requirements.txt'              # Backend dependencies
       - 'Dockerfile'                    # Backend container definition
       - '.github/workflows/backend_deployment.yml'  # This workflow
-    paths-ignore:
-      - 'trade_war_ui/**'               # Ignore frontend-only changes
   pull_request:
     branches: [ main, master ]
     paths:
       - '*.py'
       - 'requirements.txt'
       - 'Dockerfile'
-    paths-ignore:
-      - 'trade_war_ui/**'
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
