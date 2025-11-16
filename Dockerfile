@@ -16,6 +16,7 @@ RUN apt-get update \
         gcc \
         g++ \
         build-essential \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -40,5 +41,5 @@ EXPOSE 5010
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5010/health || exit 1
 
-# Run the application
-CMD ["python", "rest_api.py"]
+# Run the application with Gunicorn and eventlet workers for production
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5010", "--timeout", "120", "rest_api:app"]

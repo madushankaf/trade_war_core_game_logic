@@ -1,0 +1,90 @@
+name: Backend Deployment to Cloud Run
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '*.py'                          # Backend Python files at repo root
+      - 'requirements.txt'              # Backend dependencies
+      - 'Dockerfile'                    # Backend container definition
+      - '.github/workflows/backend_deployment.yml'  # This workflow
+    paths-ignore:
+      - 'trade_war_ui/**'               # Ignore frontend-only changes
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - '*.py'
+      - 'requirements.txt'
+      - 'Dockerfile'
+    paths-ignore:
+      - 'trade_war_ui/**'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: trade-war-api
+  IMAGE_NAME: trade-war-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Configure Docker for Google Container Registry
+      run: |
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+                   ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:latest
+
+    - name: Push Docker image to Artifact Registry
+      run: |
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:latest
+
+    - name: Deploy to Cloud Run
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      run: |
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --port 5010 \
+          --memory 512Mi \
+          --cpu 1 \
+          --timeout 300 \
+          --max-instances 10 \
+          --min-instances 0 \
+          --set-env-vars "FLASK_ENV=production,PYTHONUNBUFFERED=1"
+
+    - name: Get Service URL
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+          --region ${{ env.REGION }} \
+          --format 'value(status.url)')
+        echo "Service deployed to: $SERVICE_URL"
+        echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+    - name: Test deployment
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      run: |
+        sleep 10
+        curl -f ${{ env.SERVICE_URL }}/health || echo "Health check endpoint not available"
