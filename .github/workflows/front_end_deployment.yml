@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
     paths:
       - 'trade_war_ui/**'
+      - '.github/workflows/front_end_deployment.yml'
   pull_request:
     branches: [ main, master ]
     paths:
