@@ -9,6 +9,7 @@ on:
     branches: [ main, master ]
     paths:
       - 'trade_war_ui/**'
+      - '.github/workflows/front_end_deployment.yml'
 
 env:
   AWS_REGION: us-east-1
