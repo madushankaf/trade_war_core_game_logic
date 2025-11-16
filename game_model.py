@@ -79,6 +79,7 @@ class GameState(BaseModel):
     last_strategy_update: int = Field(0, ge=0, description="Last round when strategy was updated")
     generated_mixed_moves_array: Optional[List[str]] = Field(None, description="Generated mixed moves array")
     last_computer_move: Optional[str] = Field(None, description="Last computer move name")
+    grim_triggered: bool = Field(False, description="Whether grim trigger has been activated (permanent punishment)")
 
     @field_validator('round_idx', 'last_strategy_update')
     @classmethod

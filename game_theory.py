@@ -173,8 +173,7 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict],
         final_payoff = max(0, noise)
         print(f"Zero base payoff - only adding positive noise")
     else:
-        # For non-zero payoffs, add noise but ensure result is not negative
-        final_payoff = max(0, move_payoff + noise)
+        final_payoff = move_payoff + noise
         print(f"Added noise to non-zero payoff")
     
     print(f"Final payoff: {final_payoff}")
@@ -431,14 +430,25 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
             else:
                 return get_copy_cat_move(user_moves, last_computer_move)
         elif user_strategy_settings['strategy'] == 'grim_trigger':
+            # Before the cooperation start round, just play cooperative
             if round_idx < user_strategy_settings['cooperation_start']:
                 return get_a_random_move(cooperative_moves)
+
+            # If we were ever betrayed in the past, punish forever
+            if game['state'].get('grim_triggered', False):
+                return get_a_random_move(defective_moves)
+
+            # No previous move -> start cooperatively
             if last_computer_move is None:
                 return get_a_random_move(cooperative_moves)
-            if is_cooperative(last_computer_move):
+
+            # If opponent defected now, set trigger and punish
+            if not is_cooperative(last_computer_move):
+                game['state']['grim_triggered'] = True
                 return get_a_random_move(defective_moves)
-            else:
-                return get_a_random_move(cooperative_moves)
+
+            # Otherwise continue cooperating
+            return get_a_random_move(cooperative_moves)
         elif user_strategy_settings['strategy'] == 'random':
             return get_a_random_move(user_moves)
         elif user_strategy_settings['strategy'] == 'mixed':
@@ -446,10 +456,14 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
             indices = np.arange(len(user_strategy_settings['mixed_strategy_array'])) - shift
             probabilities = np.exp(-np.maximum(0, indices) * 0.5) 
             probabilities = probabilities / probabilities.sum()
-            next_mixed_move = np.random.choice(user_strategy_settings['mixed_strategy_array'], p=probabilities)
+            next_mixed_move = np.random.choice(
+                user_strategy_settings['mixed_strategy_array'],
+                p=probabilities
+            )
             print(f"Next mixed move: {next_mixed_move}")
             for mixed_move in user_moves:
-                if mixed_move['name'] == next_mixed_move:
+                # mixed_strategy_array contains move dicts, so compare by name
+                if mixed_move['name'] == next_mixed_move['name']:
                     print(f"Returning mixed move: {mixed_move}")
                     return mixed_move
         else:
@@ -487,18 +501,15 @@ def find_nash_equilibrium_strategy(moves: List[dict], opponent_moves: List[dict]
         print(f"Eq: {eq}")
         row_strategy, col_strategy = eq
         print(f"Row Strategy: {row_strategy}, Column Strategy: {col_strategy}")
-        #strategies.append((row_strategy, col_strategy))
         print(moves)
-        for nash_eq_prob in row_strategy:
-            i = 0
-            if  nash_eq_prob > 0:
+        for i, nash_eq_prob in enumerate(row_strategy):
+            if nash_eq_prob > 0:
                 nash_equilibria['nash_equilibria_strategies'].append({
-                            'nash_eq_strategy': {
-                                'name':moves[i].get('name'),
-                                'nash_eq_probability':nash_eq_prob
-                            }
-                        })
-            i += 1
+                    'nash_eq_strategy': {
+                        'name': moves[i]['name'],
+                        'nash_eq_probability': float(nash_eq_prob),
+                    }
+                })
 
     print(nash_equilibria)
 
@@ -623,6 +634,8 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
         game['state']['last_strategy_update'] = 0
         game['state']['generated_mixed_moves_array'] = None
         game['state']['equalizer_strategy'] = None
+        # Reset grim trigger state at the start of a new game
+        game['state']['grim_triggered'] = False
 
         
     user_move = get_next_move_based_on_strategy_settings(game, game['state']['last_computer_move'], round_idx)
