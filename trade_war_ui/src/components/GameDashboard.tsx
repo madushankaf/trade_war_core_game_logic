@@ -22,7 +22,8 @@ import {
   Pie,
   Cell,
   BarChart,
-  Bar
+  Bar,
+  PieLabelRenderProps
 } from 'recharts';
 import {
   PlayArrow,
@@ -458,7 +459,10 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    label={(props: PieLabelRenderProps) => {
+                      const percent = props.percent as number;
+                      return `${props.name}: ${(percent * 100).toFixed(1)}%`;
+                    }}
                     outerRadius={120}
                     fill="#8884d8"
                     dataKey="value"
@@ -469,14 +473,14 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                   </Pie>
                   <Tooltip 
                     formatter={(value: number, name: string, props: any) => [
-                      `${props.payload.percentage}% (${value} rounds)`,
+                      `${((props.payload.percent || 0) * 100).toFixed(1)}% (${value} rounds)`,
                       name
                     ]}
                   />
                   <Legend 
                     verticalAlign="bottom" 
                     height={36}
-                    formatter={(value, entry: any) => `${value}: ${entry.payload.percentage}%`}
+                    formatter={(value, entry: any) => `${value}: ${((entry.payload?.percent || 0) * 100).toFixed(1)}%`}
                   />
                 </PieChart>
               </ResponsiveContainer>
