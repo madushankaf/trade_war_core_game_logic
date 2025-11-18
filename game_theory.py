@@ -450,7 +450,17 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
         user_strategy_settings['cooperation_start'] = 0
 
     if user_strategy_settings['strategy'] == 'mixed':
+        # Check if mixed_strategy_array is None or contains strings (from frontend) instead of dicts
+        needs_recreation = False
         if user_strategy_settings['mixed_strategy_array'] is None:
+            needs_recreation = True
+        elif len(user_strategy_settings['mixed_strategy_array']) > 0:
+            # Check if first element is a string (frontend sends strings, backend needs dicts)
+            first_element = user_strategy_settings['mixed_strategy_array'][0]
+            if isinstance(first_element, str):
+                needs_recreation = True
+        
+        if needs_recreation:
             # Calculate array size from game's num_rounds (stored in game state or use default)
             num_rounds = game.get('num_rounds', 200)
             array_size = num_rounds  # Use full game length for mixed strategy array
@@ -508,11 +518,22 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
                 p=probabilities
             )
             print(f"Next mixed move: {next_mixed_move}")
-            for mixed_move in user_moves:
-                # mixed_strategy_array contains move dicts, so compare by name
-                if mixed_move['name'] == next_mixed_move['name']:
-                    print(f"Returning mixed move: {mixed_move}")
-                    return mixed_move
+            
+            # Handle numpy scalar wrapper if present
+            if hasattr(next_mixed_move, 'item'):
+                next_mixed_move = next_mixed_move.item()
+            
+            # mixed_strategy_array should now always contain dicts (converted from strings if needed)
+            # But add safety check just in case
+            if isinstance(next_mixed_move, dict):
+                for mixed_move in user_moves:
+                    # mixed_strategy_array contains move dicts, so compare by name
+                    if mixed_move['name'] == next_mixed_move.get('name'):
+                        print(f"Returning mixed move: {mixed_move}")
+                        return mixed_move
+            else:
+                # This shouldn't happen after the fix, but handle it defensively
+                raise ValueError(f"Expected dict from mixed_strategy_array, got {type(next_mixed_move)}: {next_mixed_move}")
         else:
             raise ValueError(f"Unknown strategy or strategy is not set: {user_strategy_settings['strategy']}")
 
