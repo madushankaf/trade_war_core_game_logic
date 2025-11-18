@@ -1,7 +1,8 @@
 {
     "profiles": {
       "Hawkish": {
-        "phases": { "p1": [0, 20], "p2": [21, 120], "p3": [121, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.10, "p2": 0.50, "p3": 0.40 },
         "dominant_probabilities": { "p1": 0.9, "p2": 0.7, "p3": 0.4 },
         "epsilon_schedule": { "type": "piecewise", "values": { "early": 0.35, "late": 0.20 }, "switch_round": 50 },
         "security_level": { "trigger": { "user_dominant": true, "payoff_gap_lt": -0.7 }, "prob": 0.3 },
@@ -11,7 +12,8 @@
       },
   
       "Dovish": {
-        "phases": { "p1": [0, 12], "p2": [13, 80], "p3": [81, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.065, "p2": 0.34, "p3": 0.595 },
         "dominant_probabilities": { "p1": 0.2, "p2": 0.15, "p3": 0.05 },
         "epsilon_schedule": { "type": "linear", "start": 0.1, "end": 0.05, "end_round": 60 },
         "security_level": { "trigger": { "user_dominant_streak": 2 }, "prob": 0.6 },
@@ -21,7 +23,8 @@
       },
   
       "Opportunist": {
-        "phases": { "p1": [0, 15], "p2": [16, 90], "p3": [91, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.08, "p2": 0.375, "p3": 0.545 },
         "dominant_probabilities": { "p1": 0.6, "p2": 0.5, "p3": 0.2 },
         "epsilon_schedule": { "type": "decay", "base": 0.5, "floor": 0.1, "tau": 60 },
         "security_level": { "trigger": { "payoff_gap_lt": -0.5 }, "prob": 0.35 },
@@ -34,7 +37,8 @@
       },
   
       "TitForTatPlus": {
-        "phases": { "p1": [0, 10], "p2": [11, 80], "p3": [81, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.055, "p2": 0.35, "p3": 0.595 },
         "dominant_probabilities": { "p1": 0.3, "p2": 0.2, "p3": 0.1 },
         "epsilon_schedule": { "type": "constant", "value": 0.05 },
         "security_level": { "trigger": { "payoff_gap_lt": -1.0 }, "prob": 0.25 },
@@ -44,7 +48,8 @@
       },
   
       "GrimTriggerPlus": {
-        "phases": { "p1": [0, 12], "p2": [13, 60], "p3": [61, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.065, "p2": 0.24, "p3": 0.695 },
         "dominant_probabilities": { "p1": 0.7, "p2": 0.6, "p3": 0.4 },
         "epsilon_schedule": { "type": "constant", "value": 0.05 },
         "security_level": { "trigger": { "in_punish_mode": true, "payoff_gap_lt": -0.5 }, "prob": 0.5 },
@@ -54,7 +59,8 @@
       },
   
       "GenerousTFT": {
-        "phases": { "p1": [0, 15], "p2": [16, 100], "p3": [101, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.08, "p2": 0.425, "p3": 0.495 },
         "dominant_probabilities": { "p1": 0.25, "p2": 0.15, "p3": 0.05 },
         "epsilon_schedule": { "type": "linear", "start": 0.12, "end": 0.06, "end_round": 80 },
         "security_level": { "trigger": { "avg_payoff_gap_lt": -0.4, "consecutive_losses": 2 }, "prob": 0.3 },
@@ -64,7 +70,8 @@
       },
   
       "SecurityFirst": {
-        "phases": { "p1": [0, 15], "p2": [16, 100], "p3": [101, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.08, "p2": 0.425, "p3": 0.495 },
         "dominant_probabilities": { "p1": 0.25, "p2": 0.2, "p3": 0.1 },
         "epsilon_schedule": { "type": "constant", "value": 0.05 },
         "security_level": { "trigger": { "user_dominant": true, "payoff_gap_lt": -0.2 }, "prob": 0.7 },
@@ -74,7 +81,8 @@
       },
   
       "NoisyExplorer": {
-        "phases": { "p1": [0, 20], "p2": [21, 120], "p3": [121, 200] },
+        "num_rounds": 200,
+        "phase_percentages": { "p1": 0.105, "p2": 0.50, "p3": 0.395 },
         "dominant_probabilities": { "p1": 0.5, "p2": 0.4, "p3": 0.2 },
         "epsilon_schedule": { "type": "linear_decay", "start": 0.6, "end": 0.1, "end_round": 150 },
         "security_level": { "trigger": { "payoff_gap_lt": -1.0 }, "prob": 0.2 },

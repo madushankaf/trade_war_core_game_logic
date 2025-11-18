@@ -14,6 +14,26 @@ class PhaseConfig:
     p2_end: int
     p3_start: int
     p3_end: int
+    
+    @classmethod
+    def from_percentages(cls, num_rounds: int, phase_percentages: Dict[str, float]):
+        """
+        Create PhaseConfig from percentages and total rounds.
+        
+        Args:
+            num_rounds: Total number of game rounds
+            phase_percentages: Dictionary with phase percentages, e.g. {'p1': 0.20, 'p2': 0.50, 'p3': 0.30}
+        """
+        from game_theory import calculate_phase_boundaries
+        phases = calculate_phase_boundaries(num_rounds, phase_percentages)
+        return cls(
+            p1_start=phases['p1'][0],
+            p1_end=phases['p1'][1],
+            p2_start=phases['p2'][0],
+            p2_end=phases['p2'][1],
+            p3_start=phases['p3'][0],
+            p3_end=phases['p3'][1]
+        )
 
 
 @dataclass
@@ -65,10 +85,12 @@ class ProfileConfig:
     retaliation: RetaliationConfig
     mixed_strategy: MixedStrategyConfig
     description: str
+    num_rounds: int = 200  # Default number of rounds
+    phase_percentages: Optional[Dict[str, float]] = None  # Optional: percentages for phases
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert ProfileConfig to dictionary"""
-        return {
+        result = {
             'name': self.name,
             'phases': {
                 'p1': [self.phases.p1_start, self.phases.p1_end],
@@ -102,8 +124,15 @@ class ProfileConfig:
                 'refresh_every': self.mixed_strategy.refresh_every,
                 'bias': self.mixed_strategy.bias
             },
-            'description': self.description
+            'description': self.description,
+            'num_rounds': self.num_rounds
         }
+        
+        # Include phase_percentages if available
+        if self.phase_percentages:
+            result['phase_percentages'] = self.phase_percentages
+        
+        return result
 
 
 class ProfileManager:
@@ -136,15 +165,31 @@ class ProfileManager:
     
     def _parse_profile(self, name: str, data: Dict) -> ProfileConfig:
         """Parse a single profile from JSON data"""
-        phases_data = data['phases']
-        phases = PhaseConfig(
-            p1_start=phases_data['p1'][0],
-            p1_end=phases_data['p1'][1],
-            p2_start=phases_data['p2'][0],
-            p2_end=phases_data['p2'][1],
-            p3_start=phases_data['p3'][0],
-            p3_end=phases_data['p3'][1]
-        )
+        # Get num_rounds from data, default to 200
+        num_rounds = data.get('num_rounds', 200)
+        
+        # Check if phase_percentages are provided
+        phase_percentages = data.get('phase_percentages')
+        
+        if phase_percentages:
+            # Calculate phases from percentages
+            phases = PhaseConfig.from_percentages(num_rounds, phase_percentages)
+        else:
+            # Use explicit phase boundaries (backward compatibility)
+            phases_data = data.get('phases', {})
+            if not phases_data:
+                # Default phases if neither provided
+                phase_percentages_default = {'p1': 0.075, 'p2': 0.425, 'p3': 0.5}  # Approximates old defaults
+                phases = PhaseConfig.from_percentages(num_rounds, phase_percentages_default)
+            else:
+                phases = PhaseConfig(
+                    p1_start=phases_data['p1'][0],
+                    p1_end=phases_data['p1'][1],
+                    p2_start=phases_data['p2'][0],
+                    p2_end=phases_data['p2'][1],
+                    p3_start=phases_data['p3'][0],
+                    p3_end=phases_data['p3'][1]
+                )
         
         epsilon_data = data['epsilon_schedule']
         epsilon = EpsilonConfig(
@@ -188,21 +233,26 @@ class ProfileManager:
             security_level=security,
             retaliation=retaliation,
             mixed_strategy=mixed_strategy,
-            description=data['description']
+            description=data['description'],
+            num_rounds=num_rounds,
+            phase_percentages=phase_percentages
         )
     
     def _create_default_profiles(self):
         """Create default profiles if loading fails"""
         # Create a simple default profile
+        default_phase_percentages = {'p1': 0.10, 'p2': 0.50, 'p3': 0.40}
         default_profile = ProfileConfig(
             name="Default",
-            phases=PhaseConfig(0, 20, 21, 120, 121, 200),
+            phases=PhaseConfig.from_percentages(200, default_phase_percentages),
             dominant_probabilities={"p1": 0.6, "p2": 0.4, "p3": 0.2},
             epsilon_schedule=EpsilonConfig(type="constant", value=0.3),
             security_level=SecurityConfig(trigger={"user_dominant": True}, prob=0.5),
             retaliation=RetaliationConfig(user_defected_prev={"prob": 0.5, "duration": 1}),
             mixed_strategy=MixedStrategyConfig(refresh_every=10, bias={"toward": "neutral", "amount": 0.0}),
-            description="Default computer behavior"
+            description="Default computer behavior",
+            num_rounds=200,
+            phase_percentages=default_phase_percentages
         )
         self.profiles["Default"] = default_profile
     

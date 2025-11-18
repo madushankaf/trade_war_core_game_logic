@@ -10,7 +10,8 @@ import {
   MenuItem,
   Slider,
   Button,
-  Chip
+  Chip,
+  TextField
 } from '@mui/material';
 import { Country, StrategyType } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
@@ -37,6 +38,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   const [moveProbabilities, setMoveProbabilities] = useState<Record<string, number>>({});
   const [availableMoves, setAvailableMoves] = useState<string[]>(defaultMoves.map(m => m.name));
   const [countryPairWarning, setCountryPairWarning] = useState<string>('');
+  const [numRounds, setNumRounds] = useState<number>(200);
 
   const strategies = [
     { value: 'copy_cat', label: 'Copy Cat', description: 'Copy your opponent\'s last move' },
@@ -183,7 +185,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         last_strategy_update: 0,
         generated_mixed_moves_array: null,
         last_computer_move: null
-      }
+      },
+      num_rounds: numRounds
     };
 
     onGameStart(gameData);
@@ -385,6 +388,25 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   max={10}
                   marks
                   valueLabelDisplay="auto"
+                />
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography gutterBottom>
+                  Number of Game Rounds: {numRounds}
+                </Typography>
+                <TextField
+                  fullWidth
+                  type="number"
+                  value={numRounds}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value) && value > 0) {
+                      setNumRounds(value);
+                    }
+                  }}
+                  inputProps={{ min: 1, max: 1000 }}
+                  helperText="Total number of rounds in the game. Phases will be calculated based on profile percentages."
                 />
               </Box>
             </CardContent>

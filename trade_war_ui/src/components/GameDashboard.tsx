@@ -9,7 +9,21 @@ import {
   LinearProgress,
   Paper
 } from '@mui/material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar
+} from 'recharts';
 import {
   PlayArrow,
   Pause,
@@ -37,7 +51,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
   const [error, setError] = useState<string | null>(null);
   const [stepData, setStepData] = useState<Array<{round: number, winner: number, winnerName: string}>>([]);
 
-  const totalRounds = 200; // From game_theory.py PHASE_3_END
+  // Get total rounds from game data, default to 200
+  const totalRounds = gameData?.num_rounds || 200;
 
   const handlePlayGame = async () => {
     setLoading(true);
@@ -156,6 +171,79 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
       default:
         return '❓';
     }
+  };
+
+  // Calculate win statistics for pie chart
+  const calculateWinStats = () => {
+    if (gameHistory.length === 0) return null;
+    
+    let userWins = 0;
+    let computerWins = 0;
+    let ties = 0;
+    
+    gameHistory.forEach((round) => {
+      if (round.user_payoff > round.computer_payoff) {
+        userWins++;
+      } else if (round.computer_payoff > round.user_payoff) {
+        computerWins++;
+      } else {
+        ties++;
+      }
+    });
+    
+    const total = gameHistory.length;
+    return [
+      { name: 'You Won', value: userWins, percentage: ((userWins / total) * 100).toFixed(1) },
+      { name: 'Opponent Won', value: computerWins, percentage: ((computerWins / total) * 100).toFixed(1) },
+      { name: 'Ties', value: ties, percentage: ((ties / total) * 100).toFixed(1) }
+    ];
+  };
+
+  // Calculate move counts for bar charts
+  const calculateMoveCounts = () => {
+    if (gameHistory.length === 0) return { user: [], computer: [] };
+    
+    const userMoveCounts: Record<string, number> = {};
+    const computerMoveCounts: Record<string, number> = {};
+    
+    gameHistory.forEach((round) => {
+      const userMoveName = round.user_move.name;
+      const computerMoveName = round.computer_move.name;
+      
+      userMoveCounts[userMoveName] = (userMoveCounts[userMoveName] || 0) + 1;
+      computerMoveCounts[computerMoveName] = (computerMoveCounts[computerMoveName] || 0) + 1;
+    });
+    
+    // Convert to array format for charts
+    const userMoves = Object.entries(userMoveCounts)
+      .map(([name, count]) => ({
+        name: name.replace('_', ' ').toUpperCase(),
+        count: count,
+        percentage: ((count / gameHistory.length) * 100).toFixed(1)
+      }))
+      .sort((a, b) => b.count - a.count);
+    
+    const computerMoves = Object.entries(computerMoveCounts)
+      .map(([name, count]) => ({
+        name: name.replace('_', ' ').toUpperCase(),
+        count: count,
+        percentage: ((count / gameHistory.length) * 100).toFixed(1)
+      }))
+      .sort((a, b) => b.count - a.count);
+    
+    return { user: userMoves, computer: computerMoves };
+  };
+
+  const winStats = calculateWinStats();
+  const moveCounts = calculateMoveCounts();
+  
+  // Colors for pie chart
+  const COLORS = ['#4CAF50', '#F44336', '#FF9800'];
+  
+  // Colors for bar charts
+  const BAR_COLORS = {
+    user: '#2196F3',
+    computer: '#9C27B0'
   };
 
   return (
@@ -353,6 +441,125 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
             </Box>
           </CardContent>
         </Card>
+      )}
+
+      {/* Win Percentage Pie Chart */}
+      {winStats && winStats.length > 0 && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom align="center">
+              📊 Round Win Distribution
+            </Typography>
+            <Box sx={{ height: 400, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={winStats}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {winStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number, name: string, props: any) => [
+                      `${props.payload.percentage}% (${value} rounds)`,
+                      name
+                    ]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value, entry: any) => `${value}: ${entry.payload.percentage}%`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Move Count Bar Charts */}
+      {moveCounts.user.length > 0 && moveCounts.computer.length > 0 && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+          {/* User Move Counts */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom align="center">
+                📈 Your Move Distribution
+              </Typography>
+              <Box sx={{ height: 350, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={moveCounts.user}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      interval={0}
+                    />
+                    <YAxis 
+                      label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value} times (${props.payload.percentage}%)`,
+                        'Usage'
+                      ]}
+                    />
+                    <Bar dataKey="count" fill={BAR_COLORS.user} radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Computer Move Counts */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom align="center">
+                📈 Opponent Move Distribution
+              </Typography>
+              <Box sx={{ height: 350, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={moveCounts.computer}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      interval={0}
+                    />
+                    <YAxis 
+                      label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value} times (${props.payload.percentage}%)`,
+                        'Usage'
+                      ]}
+                    />
+                    <Bar dataKey="count" fill={BAR_COLORS.computer} radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
       )}
 
       {/* Game Information */}

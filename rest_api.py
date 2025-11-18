@@ -248,6 +248,25 @@ def play_game(game_id):
         if not computer_profile:
             return jsonify({'error': f'Computer profile not found: {computer_profile_name}'}), 400
 
+        # Override num_rounds if provided in request
+        num_rounds_override = data.get('num_rounds')
+        if num_rounds_override:
+            # Recalculate phases if phase_percentages exist
+            if computer_profile.phase_percentages:
+                from game_theory import calculate_phase_boundaries
+                phases = calculate_phase_boundaries(num_rounds_override, computer_profile.phase_percentages)
+                # Update the profile's phases
+                from profile_manager import PhaseConfig
+                computer_profile.phases = PhaseConfig(
+                    p1_start=phases['p1'][0],
+                    p1_end=phases['p1'][1],
+                    p2_start=phases['p2'][0],
+                    p2_end=phases['p2'][1],
+                    p3_start=phases['p3'][0],
+                    p3_end=phases['p3'][1]
+                )
+            computer_profile.num_rounds = num_rounds_override
+
         game['computer_profile_name'] = computer_profile_name
         game['computer_profile'] = computer_profile.to_dict()
         # Run game with real-time updates in background thread

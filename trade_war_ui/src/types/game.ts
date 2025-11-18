@@ -48,6 +48,7 @@ export interface GameModel {
     computer: Country;
   };
   state: GameState;
+  num_rounds?: number; // Optional: number of game rounds (defaults to profile's num_rounds)
 }
 
 export interface GameResult {

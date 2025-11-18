@@ -7,13 +7,53 @@ from scipy.optimize import linprog
 from game_logger import get_game_logger
 import random
 
-# Phase boundaries
+# Phase boundaries (deprecated - now calculated from percentages)
+# Kept for backward compatibility
 PHASE_1_START = 0
 PHASE_1_END = 15
 PHASE_2_START = 16
 PHASE_2_END = 100
 PHASE_3_START = 101
 PHASE_3_END = 200
+
+def calculate_phase_boundaries(num_rounds: int, phase_percentages: Dict[str, float]) -> Dict[str, List[int]]:
+    """
+    Calculate phase boundaries from total rounds and phase percentages.
+    
+    Args:
+        num_rounds: Total number of game rounds
+        phase_percentages: Dictionary with phase percentages, e.g. {'p1': 0.20, 'p2': 0.50, 'p3': 0.30}
+        
+    Returns:
+        Dictionary with phase boundaries, e.g. {'p1': [0, 19], 'p2': [20, 99], 'p3': [100, 199]}
+    """
+    # Validate percentages sum to 1.0 (with small tolerance for floating point)
+    total_percentage = sum(phase_percentages.values())
+    if abs(total_percentage - 1.0) > 0.01:
+        raise ValueError(f"Phase percentages must sum to 1.0, got {total_percentage}")
+    
+    # Calculate phase boundaries
+    phases = {}
+    current_start = 0
+    
+    # Calculate each phase
+    for phase_key in ['p1', 'p2', 'p3']:
+        if phase_key not in phase_percentages:
+            raise ValueError(f"Missing phase percentage for {phase_key}")
+        
+        percentage = phase_percentages[phase_key]
+        phase_size = int(num_rounds * percentage)
+        
+        # Ensure we don't exceed total rounds
+        phase_end = min(current_start + phase_size - 1, num_rounds - 1)
+        
+        phases[phase_key] = [current_start, phase_end]
+        current_start = phase_end + 1
+    
+    # Ensure last phase ends at num_rounds - 1
+    phases['p3'][1] = num_rounds - 1
+    
+    return phases
 
 def check_dominant_move(moves: List[dict], opponent_move: dict, payoff_matrix: List[dict]) -> Optional[dict]:
     """
@@ -267,7 +307,8 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
         user_moves: List[dict],
         payoff_matrix: List[dict],
         state: dict,
-        user_support: Optional[np.ndarray] = None) -> dict:
+        user_support: Optional[np.ndarray] = None,
+        num_rounds: int = 200) -> dict:
     """
     Implements a mixed strategy based on probability indifference principle,
     where the strategy makes the opponent indifferent between their pure strategies.
@@ -311,7 +352,10 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
 
         mixed_strategies = [move for move in computer_moves if move['probability'] is not None and move['probability'] > 0]
 
-        state['generated_mixed_moves_array'] = np.random.choice(mixed_strategies, size= (PHASE_3_END - PHASE_2_START), p=[move['probability'] for move in mixed_strategies])
+        # Calculate array size from phase boundaries (phase 2 + phase 3)
+        # Use num_rounds parameter passed to function
+        array_size = num_rounds  # Use full game length for mixed strategy array
+        state['generated_mixed_moves_array'] = np.random.choice(mixed_strategies, size=array_size, p=[move['probability'] for move in mixed_strategies])
         if len(state['generated_mixed_moves_array']) == 0 or state['generated_mixed_moves_array'] is None:
             raise ValueError("No mixed strategies found")
     
@@ -406,8 +450,11 @@ def get_next_move_based_on_strategy_settings(game: dict, last_computer_move: dic
         user_strategy_settings['cooperation_start'] = 0
 
     if user_strategy_settings['strategy'] == 'mixed':
-        if user_strategy_settings['mixed_strategy_array'] is None:            
-            user_strategy_settings['mixed_strategy_array'] = np.random.choice(user_moves, size = (PHASE_3_END - PHASE_1_START), p=[move['probability'] for move in user_moves])
+        if user_strategy_settings['mixed_strategy_array'] is None:
+            # Calculate array size from game's num_rounds (stored in game state or use default)
+            num_rounds = game.get('num_rounds', 200)
+            array_size = num_rounds  # Use full game length for mixed strategy array
+            user_strategy_settings['mixed_strategy_array'] = np.random.choice(user_moves, size=array_size, p=[move['probability'] for move in user_moves])
 
     if round_idx == 0:
         first_move_name = user_strategy_settings['first_move']
@@ -682,7 +729,8 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
                     game['user_moves'],
                     game['payoff_matrix'],
                     game['state'],
-                    user_support=None        # plug in your support rule
+                    user_support=None,        # plug in your support rule
+                    num_rounds=game.get('num_rounds', 200)
                 )
             if computer_move is None:
                 computer_move = get_a_random_move(game['computer_moves'])
@@ -723,6 +771,9 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
     if computer_profile is None:
         raise ValueError("Computer profile is not set")
     
+    # Get num_rounds from profile, default to 200 for backward compatibility
+    num_rounds = computer_profile.get('num_rounds', 200)
+    
     iteration_moves = GameMoves()
     final_user_payoff = 0
     final_computer_payoff = 0
@@ -731,7 +782,10 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
     logger = get_game_logger()
     session_id = logger.start_game_session(game_id or "unknown_game", game)
     
-    for i in range(computer_profile['phases']['p3'][1]):
+    # Store num_rounds in game state for use in other functions
+    game['num_rounds'] = num_rounds
+    
+    for i in range(num_rounds):
         user_move, computer_move = play_game_round(game, i)
         if user_move is None:
             continue
@@ -822,7 +876,7 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
                     "user_total": round(final_user_payoff, 2),
                     "computer_total": round(final_computer_payoff, 2)
                 },
-                "game_status": "in_progress" if i < PHASE_3_END - 1 else "completed"
+                "game_status": "in_progress" if i < num_rounds - 1 else "completed"
             }
             
             socketio.emit('game_update', update_data, room=game_id)
