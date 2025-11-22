@@ -11,7 +11,8 @@ import {
   Slider,
   Button,
   Chip,
-  TextField
+  TextField,
+  Alert
 } from '@mui/material';
 import { Country, StrategyType } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
@@ -38,6 +39,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   const [moveProbabilities, setMoveProbabilities] = useState<Record<string, number>>({});
   const [availableMoves, setAvailableMoves] = useState<string[]>(defaultMoves.map(m => m.name));
   const [countryPairWarning, setCountryPairWarning] = useState<string>('');
+  const [sameCountryError, setSameCountryError] = useState<string>('');
   const [numRounds, setNumRounds] = useState<number>(200);
 
   const strategies = [
@@ -50,6 +52,16 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
 
   // Update available moves when countries are selected
   React.useEffect(() => {
+    // Check if same country is selected
+    if (userCountry && computerCountry && userCountry.code === computerCountry.code) {
+      setSameCountryError('Error: You cannot select the same country for both player and opponent.');
+      setAvailableMoves(defaultMoves.map(m => m.name));
+      setCountryPairWarning('');
+      return;
+    } else {
+      setSameCountryError('');
+    }
+
     if (userCountry && computerCountry) {
       const pairExists = countryPairExists(userCountry.name, computerCountry.name);
       
@@ -116,6 +128,11 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   const handleStartGame = () => {
     if (!userCountry || !computerCountry) {
       alert('Please select both countries');
+      return;
+    }
+
+    if (userCountry.code === computerCountry.code) {
+      alert('Error: You cannot select the same country for both player and opponent.');
       return;
     }
     
@@ -218,8 +235,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" gutterBottom align="center">
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 3 }, pb: 4 }}>
+      <Typography variant="h4" gutterBottom align="center" sx={{ mb: 4 }}>
         🎮 Trade War Game Setup
       </Typography>
       
@@ -231,22 +248,49 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               <Typography variant="h6" gutterBottom>
                 Select Your Country
               </Typography>
-              <FormControl fullWidth>
-                <InputLabel>Your Country</InputLabel>
-                <Select
-                  value={userCountry?.code || ''}
-                  onChange={(e) => {
-                    const country = countries.find(c => c.code === e.target.value);
-                    setUserCountry(country || null);
-                  }}
-                >
-                  {countries.map((country) => (
-                    <MenuItem key={country.code} value={country.code}>
-                      {country.flag} {country.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                gap: 2,
+                mt: 1 
+              }}>
+                {countries.map((country) => {
+                  const isSelected = userCountry?.code === country.code;
+                  return (
+                    <Card
+                      key={country.code}
+                      onClick={() => setUserCountry(country)}
+                      sx={{
+                        cursor: 'pointer',
+                        border: isSelected ? '3px solid' : '2px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        bgcolor: isSelected ? 'primary.light' : 'background.paper',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          transform: 'scale(1.05)',
+                          borderColor: 'primary.main',
+                          boxShadow: 3
+                        },
+                        height: '100%'
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', py: 2, '&:last-child': { pb: 2 } }}>
+                        <Typography variant="h4" sx={{ mb: 1 }}>
+                          {country.flag}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                          {country.name}
+                        </Typography>
+                        {isSelected && (
+                          <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+                            Selected
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
             </CardContent>
           </Card>
         </Box>
@@ -257,50 +301,162 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               <Typography variant="h6" gutterBottom>
                 Select Opponent Country
               </Typography>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Opponent Country</InputLabel>
-                <Select
-                  value={computerCountry?.code || ''}
-                  onChange={(e) => {
-                    const country = countries.find(c => c.code === e.target.value);
-                    setComputerCountry(country || null);
-                    // Reset profile selection when country changes
-                    if (!country) {
-                      setSelectedProfile('');
-                    }
-                  }}
-                >
-                  {countries.map((country) => (
-                    <MenuItem key={country.code} value={country.code}>
-                      {country.flag} {country.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              {/* Profile Selection - Only enabled when opponent country is selected */}
-              <FormControl fullWidth disabled={!computerCountry}>
-                <InputLabel>Computer Behavior Profile</InputLabel>
-                <Select
-                  value={selectedProfile}
-                  onChange={(e) => setSelectedProfile(e.target.value)}
-                  disabled={!computerCountry}
-                >
-                  {Object.entries(profiles).map(([profileName, profileData]) => (
-                    <MenuItem key={profileName} value={profileName}>
-                      <Box>
-                        <Typography variant="subtitle1">{profileName}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {profileData.description}
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                gap: 2,
+                mt: 1 
+              }}>
+                {countries
+                  .filter(country => !userCountry || country.code !== userCountry.code)
+                  .map((country) => {
+                    const isSelected = computerCountry?.code === country.code;
+                    return (
+                      <Card
+                        key={country.code}
+                        onClick={() => {
+                          setComputerCountry(country);
+                          // Reset profile selection when country changes
+                          setSelectedProfile('');
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          border: isSelected ? '3px solid' : '2px solid',
+                          borderColor: isSelected ? 'primary.main' : 'divider',
+                          bgcolor: isSelected ? 'primary.light' : 'background.paper',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            borderColor: 'primary.main',
+                            boxShadow: 3
+                          },
+                          height: '100%'
+                        }}
+                      >
+                        <CardContent sx={{ textAlign: 'center', py: 2, '&:last-child': { pb: 2 } }}>
+                          <Typography variant="h4" sx={{ mb: 1 }}>
+                            {country.flag}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                            {country.name}
+                          </Typography>
+                          {isSelected && (
+                            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+                              Selected
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </Box>
             </CardContent>
           </Card>
         </Box>
+
+        {/* Computer Behavior Profile - Separate card when opponent country is selected */}
+        {computerCountry && (
+          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
+            <Card sx={{ bgcolor: 'background.default', border: '2px solid', borderColor: 'divider' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                  🤖 Computer Behavior Profile
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Choose how the computer opponent will behave during the game. Each profile has a different strategy and approach.
+                </Typography>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+                  gap: 2
+                }}>
+                  {Object.entries(profiles).map(([profileName, profileData]) => {
+                    const isSelected = selectedProfile === profileName;
+                    return (
+                      <Card
+                        key={profileName}
+                        onClick={() => setSelectedProfile(profileName)}
+                        sx={{
+                          cursor: 'pointer',
+                          border: isSelected ? '3px solid' : '2px solid',
+                          borderColor: isSelected ? 'secondary.main' : 'divider',
+                          bgcolor: isSelected ? 'secondary.light' : 'background.paper',
+                          transition: 'all 0.2s ease-in-out',
+                          height: '100%',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            borderColor: isSelected ? 'secondary.main' : 'secondary.main',
+                            boxShadow: 4,
+                            bgcolor: isSelected ? 'secondary.light' : 'action.hover'
+                          }
+                        }}
+                      >
+                        <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography 
+                              variant="subtitle1" 
+                              sx={{ 
+                                fontWeight: isSelected ? 'bold' : 600,
+                                fontSize: '1rem',
+                                color: isSelected ? 'secondary.main' : 'text.primary'
+                              }}
+                            >
+                              {profileName}
+                            </Typography>
+                            {isSelected && (
+                              <Box
+                                sx={{
+                                  bgcolor: 'secondary.main',
+                                  color: 'white',
+                                  borderRadius: '50%',
+                                  width: 24,
+                                  height: 24,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                ✓
+                              </Box>
+                            )}
+                          </Box>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary" 
+                            sx={{ 
+                              fontSize: '0.875rem',
+                              lineHeight: 1.5
+                            }}
+                          >
+                            {profileData.description}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </Box>
+                {selectedProfile && (
+                  <Box sx={{ mt: 2, p: 2, bgcolor: 'secondary.light', borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                      <strong>Selected:</strong> {selectedProfile} - {profiles[selectedProfile as keyof typeof profiles]?.description}
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+        )}
+
+        {/* Same Country Error */}
+        {sameCountryError && (
+          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
+            <Alert severity="error" sx={{ fontWeight: 'bold' }}>
+              {sameCountryError}
+            </Alert>
+          </Box>
+        )}
 
         {/* Country Pair Warning */}
         {countryPairWarning && (
@@ -315,70 +471,122 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
           </Box>
         )}
 
-        {/* Profile Description - Only show when profile is selected */}
-        {selectedProfile && (
-          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
-            <Card sx={{ bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.200' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom color="primary">
-                  🤖 Selected Computer Profile: {selectedProfile}
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  {profiles[selectedProfile as keyof typeof profiles]?.description}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  This profile will determine how the computer opponent behaves during the game.
-                </Typography>
-              </CardContent>
-            </Card>
-          </Box>
-        )}
 
         {/* Strategy Configuration */}
         <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Strategy Configuration
+                Your Strategy Configuration
               </Typography>
               
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Strategy Type</InputLabel>
-                <Select
-                  value={strategy}
-                  onChange={(e) => setStrategy(e.target.value as StrategyType)}
-                >
-                  {strategies.map((strat) => (
-                    <MenuItem key={strat.value} value={strat.value}>
-                      <Box>
-                        <Typography variant="subtitle1">{strat.label}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {strat.description}
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/* Strategy Type Tiles */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                  Strategy Type
+                </Typography>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                  gap: 1.5
+                }}>
+                  {strategies.map((strat) => {
+                    const isSelected = strategy === strat.value;
+                    return (
+                      <Card
+                        key={strat.value}
+                        onClick={() => setStrategy(strat.value as StrategyType)}
+                        sx={{
+                          cursor: 'pointer',
+                          border: isSelected ? '3px solid' : '2px solid',
+                          borderColor: isSelected ? 'primary.main' : 'divider',
+                          bgcolor: isSelected ? 'primary.light' : 'background.paper',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            borderColor: 'primary.main',
+                            boxShadow: 3
+                          }
+                        }}
+                      >
+                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5 }}>
+                            {strat.label}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
+                            {strat.description}
+                          </Typography>
+                          {isSelected && (
+                            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold' }}>
+                              ✓ Selected
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </Box>
+              </Box>
 
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>First Move</InputLabel>
-                <Select
-                  value={firstMove}
-                  onChange={(e) => setFirstMove(e.target.value)}
-                >
+              {/* First Move Tiles */}
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                  First Move
+                </Typography>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                  gap: 1.5
+                }}>
                   {defaultMoves
                     .filter(move => availableMoves.includes(move.name))
-                    .map((move) => (
-                      <MenuItem key={move.name} value={move.name}>
-                        {move.name.replace('_', ' ').toUpperCase()}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
+                    .map((move) => {
+                      const isSelected = firstMove === move.name;
+                      const moveType = getMoveTypeFromUiName(move.name) || move.type;
+                      return (
+                        <Card
+                          key={move.name}
+                          onClick={() => setFirstMove(move.name)}
+                          sx={{
+                            cursor: 'pointer',
+                            border: isSelected ? '3px solid' : '2px solid',
+                            borderColor: isSelected 
+                              ? (moveType === 'cooperative' ? 'success.main' : 'error.main')
+                              : 'divider',
+                            bgcolor: isSelected 
+                              ? (moveType === 'cooperative' ? 'success.light' : 'error.light')
+                              : 'background.paper',
+                            transition: 'all 0.2s ease-in-out',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              boxShadow: 3
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5 }}>
+                              {move.name.replace('_', ' ').toUpperCase()}
+                            </Typography>
+                            <Chip 
+                              label={moveType} 
+                              size="small" 
+                              color={moveType === 'cooperative' ? 'success' : 'error'}
+                              sx={{ fontSize: '0.65rem', height: 20 }}
+                            />
+                            {isSelected && (
+                              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold' }}>
+                                ✓ Selected
+                              </Typography>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                </Box>
+              </Box>
 
-              <Box sx={{ mb: 2 }}>
-                <Typography gutterBottom>
+              <Box sx={{ mb: 2, mt: 2 }}>
+                <Typography gutterBottom sx={{ mb: 1.5, fontWeight: 'medium' }}>
                   Cooperation Start Round: {cooperationStart}
                 </Typography>
                 <Slider
@@ -388,12 +596,13 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   max={10}
                   marks
                   valueLabelDisplay="auto"
+                  sx={{ mt: 2 }}
                 />
               </Box>
 
               <Box sx={{ mb: 2 }}>
-                <Typography gutterBottom>
-                  Number of Game Rounds: {numRounds}
+                <Typography gutterBottom sx={{ mb: 1.5, fontWeight: 'medium' }}>
+                  Number of Game Rounds
                 </Typography>
                 <TextField
                   fullWidth
@@ -407,6 +616,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   }}
                   inputProps={{ min: 1, max: 1000 }}
                   helperText="Total number of rounds in the game. Phases will be calculated based on profile percentages."
+                  variant="outlined"
                 />
               </Box>
             </CardContent>
@@ -418,33 +628,73 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Available Moves
+                Select Available Moves
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Select at least 2 moves for the game. {userCountry && computerCountry && (
+                  <span>{availableMoves.length} moves available for {userCountry.name} vs {computerCountry.name}</span>
+                )}
+              </Typography>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                gap: 1.5,
+                mb: 2
+              }}>
                 {defaultMoves.map((move) => {
                   const isAvailable = availableMoves.includes(move.name);
+                  const isSelected = selectedMoves.includes(move.name);
                   const moveType = getMoveTypeFromUiName(move.name) || move.type;
                   return (
-                    <Chip
+                    <Card
                       key={move.name}
-                      label={`${move.name.replace('_', ' ').toUpperCase()} (${moveType})`}
-                      color={selectedMoves.includes(move.name) ? 'primary' : 'default'}
                       onClick={() => isAvailable && handleMoveToggle(move.name)}
-                      variant={selectedMoves.includes(move.name) ? 'filled' : 'outlined'}
-                      disabled={!isAvailable}
-                      sx={{ mb: 1, opacity: isAvailable ? 1 : 0.5 }}
-                      title={!isAvailable ? 'Move not available for selected country pair' : ''}
-                    />
+                      sx={{
+                        cursor: isAvailable ? 'pointer' : 'not-allowed',
+                        border: isSelected ? '3px solid' : '2px solid',
+                        borderColor: isSelected 
+                          ? (moveType === 'cooperative' ? 'success.main' : 'error.main')
+                          : 'divider',
+                        bgcolor: isSelected 
+                          ? (moveType === 'cooperative' ? 'success.light' : 'error.light')
+                          : 'background.paper',
+                        opacity: isAvailable ? 1 : 0.4,
+                        transition: isAvailable ? 'all 0.2s ease-in-out' : 'none',
+                        ...(isAvailable && {
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: 3
+                          }
+                        })
+                      }}
+                    >
+                      <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                        <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 1 }}>
+                          {move.name.replace('_', ' ').toUpperCase()}
+                        </Typography>
+                        <Chip 
+                          label={moveType} 
+                          size="small" 
+                          color={moveType === 'cooperative' ? 'success' : 'error'}
+                          sx={{ fontSize: '0.7rem', mb: 0.5 }}
+                        />
+                        {isSelected && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold' }}>
+                            ✓ Selected
+                          </Typography>
+                        )}
+                        {!isAvailable && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontSize: '0.65rem' }}>
+                            Not available
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </Box>
-              <Typography variant="caption" color="text.secondary">
-                Selected moves: {selectedMoves.length} (minimum 2 required)
-                {userCountry && computerCountry && (
-                  <span>
-                    {' '}• {availableMoves.length} moves available for {userCountry.name} vs {computerCountry.name}
-                  </span>
-                )}
+              <Typography variant="caption" color={selectedMoves.length < 2 ? 'error' : 'text.secondary'}>
+                {selectedMoves.length} of {availableMoves.length} moves selected (minimum 2 required)
               </Typography>
             </CardContent>
           </Card>
@@ -521,6 +771,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               !userCountry || 
               !computerCountry || 
               !selectedProfile ||
+              (userCountry && computerCountry && userCountry.code === computerCountry.code) ||
               selectedMoves.length < 2 || 
               (strategy === 'mixed' && Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01)
             }
