@@ -220,7 +220,7 @@ The test suite includes comprehensive tests for:
 
 ### Game Strategies
 - `test_get_copy_cat_move`: Tests copy-cat strategy
-- `test_get_security_level_response`: Tests security level responses
+- `test_get_security_level_strategy`: Tests security level strategy (maximin)
 - `test_get_next_move_based_on_strategy_settings`: Tests various strategy implementations
 
 ### Game Simulation

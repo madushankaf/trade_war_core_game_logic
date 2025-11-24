@@ -10,18 +10,17 @@ from game_moves import GameMoves
 from game_theory import play_full_game
 from game_model import GameModel
 from profile_manager import ProfileManager
+from game_session import GameSessionManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 profile_manager = ProfileManager()
+game_manager = GameSessionManager(profile_manager)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 socketio = SocketIO(app, cors_allowed_origins="*")  # Enable SocketIO with CORS
-
-# Game map to store game objects
-game_map: Dict[str, dict] = {}
 
 # WebSocket event handlers
 @socketio.on('join_game')
@@ -290,6 +289,96 @@ def play_game(game_id):
 
     except Exception as e:
         logger.error(f"Error during game play: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/games/<game_id>/round', methods=['POST'])
+def play_round(game_id):
+    """
+    Play a single round of the game.
+    
+    Request body (first call):
+    - Full game configuration (same as /games/<game_id>/play)
+    - Optional: user_move (dict with 'name' field) to override strategy
+    
+    Request body (subsequent calls):
+    - Optional: user_move (dict with 'name' field) to override strategy
+    - If game not initialized, full game configuration is required
+    
+    Returns:
+    - Round result with moves, payoffs, and updated game state
+    """
+    try:
+        data = request.get_json() or {}
+        is_valid, error_msg = validate_json_data(data) if data else (True, None)
+        
+        # Check if game exists, initialize if needed
+        if not game_manager.get_game(game_id):
+            if not data:
+                return jsonify({'error': 'Game not found. Please provide game configuration to initialize.'}), 404
+            
+            try:
+                game_manager.initialize_game(game_id, data)
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
+            except Exception as e:
+                logger.error(f"Error initializing game: {str(e)}")
+                return jsonify({'error': 'Internal server error'}), 500
+        
+        # Get user move override if provided
+        user_move_override = data.get('user_move')
+        
+        # Play the round
+        try:
+            response_data = game_manager.play_round(game_id, user_move_override)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+        except Exception as e:
+            logger.error(f"Error playing round: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        
+        # Emit WebSocket update if client is connected
+        if socketio:
+            socketio.emit('round_update', response_data, room=game_id)
+        
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        logger.error(f"Error in play_round endpoint: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+@app.route('/games/<game_id>/state', methods=['GET'])
+def get_game_state(game_id):
+    """
+    Get the current state of a game.
+    
+    Returns:
+    - Current round, running totals, and game status
+    """
+    try:
+        state = game_manager.get_game_state(game_id)
+        return jsonify(state), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        logger.error(f"Error getting game state: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/games/<game_id>', methods=['DELETE'])
+def delete_game(game_id):
+    """
+    Delete a game from memory.
+    """
+    try:
+        if game_manager.delete_game(game_id):
+            return jsonify({'message': 'Game deleted successfully'}), 200
+        else:
+            return jsonify({'error': 'Game not found'}), 404
+    except Exception as e:
+        logger.error(f"Error deleting game: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':

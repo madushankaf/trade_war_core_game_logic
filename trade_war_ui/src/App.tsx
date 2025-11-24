@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box } from '@mui/material';
+import { CssBaseline, Box, AppBar, Toolbar, Typography, Button } from '@mui/material';
 import GameSetup from './components/GameSetup';
 import GameDashboard from './components/GameDashboard';
+import StepByStepGame from './components/StepByStepGame';
 import { GameModel } from './types/game';
 
 // Create a custom theme for the trade war game
@@ -49,7 +50,7 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentView, setCurrentView] = useState<'setup' | 'game'>('setup');
+  const [currentView, setCurrentView] = useState<'setup' | 'game' | 'step-by-step'>('setup');
   const [gameData, setGameData] = useState<GameModel | null>(null);
 
   const handleGameStart = (data: GameModel) => {
@@ -66,8 +67,33 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        {/* Navigation Bar */}
+        <AppBar position="static" sx={{ mb: 3 }}>
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              🎮 Trade War Game
+            </Typography>
+            <Button 
+              color="inherit" 
+              onClick={() => setCurrentView('setup')}
+              sx={{ mr: 2 }}
+            >
+              Game Setup
+            </Button>
+            <Button 
+              color="inherit" 
+              onClick={() => setCurrentView('step-by-step')}
+            >
+              Step-by-Step
+            </Button>
+          </Toolbar>
+        </AppBar>
+
+        {/* Main Content */}
         {currentView === 'setup' ? (
           <GameSetup onGameStart={handleGameStart} />
+        ) : currentView === 'step-by-step' ? (
+          <StepByStepGame onBackToSetup={() => setCurrentView('setup')} />
         ) : (
           gameData && <GameDashboard gameData={gameData} onBackToSetup={handleBackToSetup} />
         )}

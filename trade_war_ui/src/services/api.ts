@@ -34,6 +34,35 @@ interface RoundUpdateData {
   game_status: string;
 }
 
+interface RoundPlayResponse {
+  round: number;
+  user_move: WebSocketMove;
+  computer_move: WebSocketMove;
+  user_payoff: number;
+  computer_payoff: number;
+  round_winner: string;
+  phase: string;
+  running_totals: {
+    user_total: number;
+    computer_total: number;
+  };
+  game_status: string;
+  current_round: number;
+  total_rounds: number;
+}
+
+interface GameStateResponse {
+  game_id: string;
+  current_round: number;
+  total_rounds: number;
+  running_totals: {
+    user_total: number;
+    computer_total: number;
+  };
+  game_status: string;
+  last_computer_move: string | null;
+}
+
 interface GameErrorData {
   error: string;
 }
@@ -217,6 +246,64 @@ export const gameApi = {
     } catch (error) {
       console.error('Error generating sample game:', error);
       throw error;
+    }
+  },
+
+  // Step-by-step game methods
+  /**
+   * Initialize a game for step-by-step play
+   * @param gameId Unique game identifier
+   * @param gameData Full game configuration
+   */
+  initializeStepByStepGame: async (gameId: string, gameData: GameModel): Promise<void> => {
+    try {
+      await api.post(`/games/${gameId}/round`, gameData);
+    } catch (error: any) {
+      console.error('Error initializing step-by-step game:', error);
+      throw new Error(error.response?.data?.error || 'Failed to initialize game');
+    }
+  },
+
+  /**
+   * Play a single round of the game
+   * @param gameId Unique game identifier
+   * @param userMove Optional user move to override strategy (dict with 'name' field or string)
+   */
+  playRound: async (gameId: string, userMove?: { name: string } | string): Promise<RoundPlayResponse> => {
+    try {
+      const requestData = userMove ? { user_move: typeof userMove === 'string' ? userMove : userMove } : {};
+      const response = await api.post<RoundPlayResponse>(`/games/${gameId}/round`, requestData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error playing round:', error);
+      throw new Error(error.response?.data?.error || 'Failed to play round');
+    }
+  },
+
+  /**
+   * Get the current state of a game
+   * @param gameId Unique game identifier
+   */
+  getGameState: async (gameId: string): Promise<GameStateResponse> => {
+    try {
+      const response = await api.get<GameStateResponse>(`/games/${gameId}/state`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error getting game state:', error);
+      throw new Error(error.response?.data?.error || 'Failed to get game state');
+    }
+  },
+
+  /**
+   * Delete a game from memory
+   * @param gameId Unique game identifier
+   */
+  deleteGame: async (gameId: string): Promise<void> => {
+    try {
+      await api.delete(`/games/${gameId}`);
+    } catch (error: any) {
+      console.error('Error deleting game:', error);
+      throw new Error(error.response?.data?.error || 'Failed to delete game');
     }
   },
 };
