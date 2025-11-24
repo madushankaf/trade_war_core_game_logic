@@ -55,64 +55,120 @@ def calculate_phase_boundaries(num_rounds: int, phase_percentages: Dict[str, flo
     
     return phases
 
-def check_dominant_move(moves: List[dict], opponent_move: dict, payoff_matrix: List[dict]) -> Optional[dict]:
+def check_dominant_move(my_moves: List[dict], possible_opponent_moves: List[dict], payoff_matrix: List[dict]) -> Optional[dict]:
     """
-    Check if there's a dominant move among the given moves against a specific opponent move.
-    Returns the dominant move if found, None otherwise.
+    Check if there is a dominant move (strategy) that is strictly better than 
+    all other available moves, regardless of what the opponent plays.
     
     Args:
-        moves: List of possible moves to check
-        opponent_move: The opponent's move to evaluate against
+        my_moves: List of the player's available moves (e.g., game['computer_moves'])
+        possible_opponent_moves: List of ALL moves the opponent could play (e.g., game['user_moves'])
         payoff_matrix: List of payoff entries
         
     Returns:
         Optional[dict]: The dominant move if found, None otherwise
     """
-    print(f"\nChecking for dominant move against opponent move: {opponent_move['name']}")
+    print(f"\nChecking for True Dominant Strategy...")
     
-    if not moves:
-        print("No moves to check")
+    if not my_moves or not possible_opponent_moves:
         return None
     
-    if len(moves) == 1:
-        return moves[0]
-    
-    #guard rail for unknown opponent move
-    payoff_entry = next(
-        (entry for entry in payoff_matrix 
-         if entry['computer_move_name'] == opponent_move['name'] 
-         ),
-        None
-    )
+    # If there's only one move, it is trivially dominant
+    if len(my_moves) == 1:
+        return my_moves[0]
 
-    if payoff_entry is None:
-        return None
-    
-    
-    # For each move, check if it's dominant
-    for move in moves:
-        print(f"\nChecking if {move['name']} is dominant")
-        is_dominant = True
+    # Iterate through each of my potential moves (Candidate)
+    for candidate_move in my_moves:
+        is_strictly_dominant = True
         
-        for other_move in moves:
-            if move == other_move:
+        # Compare the Candidate against every other move I could make (Alternative)
+        for alternative_move in my_moves:
+            if candidate_move['name'] == alternative_move['name']:
                 continue
+            
+            # Check against EVERY possible move the opponent has
+            for opp_move in possible_opponent_moves:
                 
-            print(f"Comparing {move['name']} vs {other_move['name']}")
-            is_better = is_the_move_with_the_better_payoff(move, other_move, opponent_move, payoff_matrix)
-            if is_better is None:
-                break
-            if not is_better:
-                print(f"{move['name']} is not better than {other_move['name']}")
-                is_dominant = False
+                # IMPORTANT: Use deterministic expected payoff for theoretical calculations
+                payoff_candidate = get_expected_payoff(candidate_move, opp_move, payoff_matrix)
+                payoff_alternative = get_expected_payoff(alternative_move, opp_move, payoff_matrix)
+                
+                # If the candidate is NOT better in even one scenario, it is not dominant.
+                # Use <= for Strict Dominance (must be strictly better)
+                # Use < for Weak Dominance (can be equal)
+                if payoff_candidate <= payoff_alternative:
+                    is_strictly_dominant = False
+                    break 
+            
+            if not is_strictly_dominant:
                 break
         
-        if is_dominant:
-            print(f"Found dominant move: {move['name']}")
-            return move
-    
-    print("No dominant move found")
+        # If the candidate survived all comparisons against all opponent moves
+        if is_strictly_dominant:
+            print(f"Found dominant strategy: {candidate_move['name']}")
+            return candidate_move
+
+    print("No dominant strategy found.")
     return None
+
+# def check_dominant_move(moves: List[dict], opponent_move: dict, payoff_matrix: List[dict]) -> Optional[dict]:
+#     """
+#     Check if there's a dominant move among the given moves against a specific opponent move.
+#     Returns the dominant move if found, None otherwise.
+    
+#     Args:
+#         moves: List of possible moves to check
+#         opponent_move: The opponent's move to evaluate against
+#         payoff_matrix: List of payoff entries
+        
+#     Returns:
+#         Optional[dict]: The dominant move if found, None otherwise
+#     """
+#     print(f"\nChecking for dominant move against opponent move: {opponent_move['name']}")
+    
+#     if not moves:
+#         print("No moves to check")
+#         return None
+    
+#     if len(moves) == 1:
+#         return moves[0]
+    
+#     #guard rail for unknown opponent move
+#     payoff_entry = next(
+#         (entry for entry in payoff_matrix 
+#          if entry['computer_move_name'] == opponent_move['name'] 
+#          ),
+#         None
+#     )
+
+#     if payoff_entry is None:
+#         return None
+    
+    
+#     # For each move, check if it's dominant
+#     for move in moves:
+#         print(f"\nChecking if {move['name']} is dominant")
+#         is_dominant = True
+        
+#         for other_move in moves:
+#             if move == other_move:
+#                 continue
+                
+#             print(f"Comparing {move['name']} vs {other_move['name']}")
+#             is_better = is_the_move_with_the_better_payoff(move, other_move, opponent_move, payoff_matrix)
+#             if is_better is None:
+#                 break
+#             if not is_better:
+#                 print(f"{move['name']} is not better than {other_move['name']}")
+#                 is_dominant = False
+#                 break
+        
+#         if is_dominant:
+#             print(f"Found dominant move: {move['name']}")
+#             return move
+    
+#     print("No dominant move found")
+#     return None
 
 def is_the_move_with_the_better_payoff(move1: dict, move2: dict, opponent_move: dict, payoff_matrix: List[dict]) -> bool:
     """
@@ -128,18 +184,20 @@ def is_the_move_with_the_better_payoff(move1: dict, move2: dict, opponent_move: 
     Returns:
         bool: True if move1 has better payoff than move2 against opponent_move
     """
-    # Get payoffs for each move against the opponent
-    payoff1 = calculate_payoff(move1, opponent_move, payoff_matrix)
-    payoff2 = calculate_payoff(move2, opponent_move, payoff_matrix)
+    # Get payoffs for each move against the opponent (deterministic for comparison)
+    payoff1 = get_expected_payoff(move1, opponent_move, payoff_matrix)
+    payoff2 = get_expected_payoff(move2, opponent_move, payoff_matrix)
     
     print(f"Payoff comparison: {move1['name']}({payoff1}) vs {move2['name']}({payoff2})")
     
     # Move1 is better if it has a higher payoff
     return payoff1 > payoff2
 
-def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict], is_noise_added: bool = False) -> float:
+def get_expected_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict]) -> float:
     """
-    Calculate the expected payoff for a move against a specific opponent move.
+    Calculate the expected (deterministic) payoff for a move against a specific opponent move.
+    This function is used by solvers (Nash equilibrium, linear programming, etc.) and should
+    NEVER include random noise to ensure stable, reproducible results.
     
     Args:
         move: The move to evaluate
@@ -155,9 +213,9 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict],
             ]
         
     Returns:
-        float: The expected payoff (never negative)
+        float: The expected payoff (deterministic, no noise)
     """
-    print(f"\nCalculating payoff for move: {move['name']} (type: {move['type']}, probability: {move['probability']})")
+    print(f"\nCalculating expected payoff for move: {move['name']} (type: {move['type']}, probability: {move['probability']})")
     print(f"Against opponent move: {opponent_move['name']} (type: {opponent_move['type']}, probability: {opponent_move['probability']})")
     
     # Extract move parameters
@@ -195,60 +253,145 @@ def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict],
     # Convert enum to string value for dictionary access
     player_key = player.value if hasattr(player, 'value') else str(player)
     base_payoff = payoff_entry['payoff'][player_key]
-    move_payoff = base_payoff * move_prob * opp_prob
+    expected_payoff = base_payoff * move_prob * opp_prob
     
     print(f"Found payoff entry: {payoff_entry}")
     print(f"Base payoff: {base_payoff}")
-    print(f"Adjusted payoff (with probabilities): {move_payoff}")
+    print(f"Expected payoff (with probabilities): {expected_payoff}")
+    
+    return expected_payoff
+
+def get_realized_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict]) -> float:
+    """
+    Calculate the realized payoff for a move against a specific opponent move, including random noise.
+    This function is used for actual scoring of game rounds, where noise represents real-world uncertainty.
+    
+    Args:
+        move: The move to evaluate
+        opponent_move: The opponent's move to evaluate against
+        payoff_matrix: List of payoff entries with structure:
+            [
+                {
+                    "user_move_name": str,
+                    "computer_move_name": str,
+                    "payoff": {"user": float, "computer": float}
+                },
+                ...
+            ]
         
-    noise = 0.0
-    #Always add noise, but ensure final payoff is never negative
-    if is_noise_added:
-        noise = np.random.normal(0, 0.1)  # Small random noise
-    print(f"\nTotal payoff before noise: {move_payoff}")
+    Returns:
+        float: The realized payoff (with noise, never negative)
+    """
+    # Get deterministic expected payoff
+    expected_payoff = get_expected_payoff(move, opponent_move, payoff_matrix)
+    
+    # Add random noise to simulate real-world uncertainty
+    noise = np.random.normal(0, 0.1)  # Small random noise
+    print(f"\nTotal payoff before noise: {expected_payoff}")
     print(f"Generated noise: {noise}")
     
-    if move_payoff == 0:
+    if expected_payoff == 0:
         # For zero payoffs, only add positive noise
         final_payoff = max(0, noise)
         print(f"Zero base payoff - only adding positive noise")
     else:
-        final_payoff = move_payoff + noise
+        final_payoff = expected_payoff + noise
         print(f"Added noise to non-zero payoff")
     
-    print(f"Final payoff: {final_payoff}")
+    print(f"Final realized payoff: {final_payoff}")
     return final_payoff
 
-def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_matrix: List[dict]) -> Optional[dict]:
+def calculate_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict], is_noise_added: bool = False) -> float:
     """
-    Get the security-level (min-max) response to an opponent's strategy.
+    [DEPRECATED] Calculate payoff - kept for backward compatibility.
+    
+    Use get_expected_payoff() for solver calculations (deterministic).
+    Use get_realized_payoff() for actual game scoring (with noise).
+    
+    Args:
+        move: The move to evaluate
+        opponent_move: The opponent's move to evaluate against
+        payoff_matrix: List of payoff entries
+        is_noise_added: Whether to add noise (deprecated - use get_realized_payoff instead)
+        
+    Returns:
+        float: The payoff
     """
+    if is_noise_added:
+        return get_realized_payoff(move, opponent_move, payoff_matrix)
+    else:
+        return get_expected_payoff(move, opponent_move, payoff_matrix)
 
-    print(f"Getting security-level response for moves: {moves} against opponent move: {opponent_move}")
+# def get_security_level_response(moves: List[dict], opponent_move: dict, payoff_matrix: List[dict]) -> Optional[dict]:
+#     """
+#     Get the security-level (min-max) response to an opponent's strategy.
+#     """
 
-    all_payoffs = {}
-    for move in moves:
-        payoff = calculate_payoff(move, opponent_move, payoff_matrix)
-        print(f"Payoff for {move.get('name', '')}: {payoff}")
-        all_payoffs[move.get('name', '')] = payoff
+#     print(f"Getting security-level response for moves: {moves} against opponent move: {opponent_move}")
+
+#     all_payoffs = {}
+#     for move in moves:
+#         payoff = get_expected_payoff(move, opponent_move, payoff_matrix)
+#         print(f"Payoff for {move.get('name', '')}: {payoff}")
+#         all_payoffs[move.get('name', '')] = payoff
     
-    print(f"All Payoffs: {all_payoffs}")
+#     print(f"All Payoffs: {all_payoffs}")
     
-    # Find the worst payoff
-    worst_payoff = min(all_payoffs.values())   
-    print(f"Worst Payoff: {worst_payoff}")
-    worst_case_threshold = worst_payoff + 1
-    worst_case_moves = {
-        move: payoff for move, payoff in all_payoffs.items()
-        if payoff <= worst_case_threshold
-   }
+#     # Find the worst payoff
+#     worst_payoff = min(all_payoffs.values())   
+#     print(f"Worst Payoff: {worst_payoff}")
+#     worst_case_threshold = worst_payoff + 1
+#     worst_case_moves = {
+#         move: payoff for move, payoff in all_payoffs.items()
+#         if payoff <= worst_case_threshold
+#    }
     
-    worst_case_move = max(worst_case_moves, key=worst_case_moves.get)
-    print(f"Worst case move: {worst_case_move}")
-    for move in moves:
-        if move['name'] == worst_case_move:
-            print(f"Returning worst case move: {move}")
-            return move
+#     worst_case_move = max(worst_case_moves, key=worst_case_moves.get)
+#     print(f"Worst case move: {worst_case_move}")
+#     for move in moves:
+#         if move['name'] == worst_case_move:
+#             print(f"Returning worst case move: {move}")
+#             return move
+
+def get_security_level_strategy(my_moves: List[dict], possible_opponent_moves: List[dict], payoff_matrix: List[dict]) -> Optional[dict]:
+    """
+    Calculates the Maximin strategy (Security Level).
+    1. For each of my moves, find the worst possible payoff (Minimum).
+    2. Pick the move where that worst payoff is the highest (Maximum).
+    """
+    print(f"\nCalculating Security Level (Maximin) Strategy...")
+    
+    if not my_moves or not possible_opponent_moves:
+        return None
+
+    maximin_value = -float('inf')
+    maximin_move = None
+
+    # Step 1: Loop through all my possible moves
+    for my_move in my_moves:
+        
+        # Find the worst case scenario for THIS move
+        worst_payoff_for_this_move = float('inf')
+        
+        for opp_move in possible_opponent_moves:
+            # Use deterministic expected payoff for theoretical calculations
+            payoff = get_expected_payoff(my_move, opp_move, payoff_matrix)
+            
+            if payoff < worst_payoff_for_this_move:
+                worst_payoff_for_this_move = payoff
+        
+        print(f"Worst case for {my_move['name']} is {worst_payoff_for_this_move}")
+
+        # Step 2: Maximize the Minimum
+        if worst_payoff_for_this_move > maximin_value:
+            maximin_value = worst_payoff_for_this_move
+            maximin_move = my_move
+
+    if maximin_move:
+        print(f"Security Level Move: {maximin_move['name']} (Guaranteed Payoff: {maximin_value})")
+    else:
+        print("No security level strategy found")
+    return maximin_move
 
 def solve_mixed_strategy_indifference_general(payoffs, player='row', tolerance=0.1):
     """
@@ -324,8 +467,8 @@ def get_the_next_move_based_on_mixed_strartegy_probability_indifference(
     """
     if state['generated_mixed_moves_array'] is None or state['equalizer_strategy'] is None or ( state['round_idx'] - state['last_strategy_update'] > 10):
 
-        computer_payoff_matrix = np.array([[calculate_payoff(cs, us, payoff_matrix) for us in user_moves] for cs in computer_moves])
-        user_payoff_matrix = np.array([[calculate_payoff(us, cs, payoff_matrix) for cs in computer_moves] for us in user_moves])   
+        computer_payoff_matrix = np.array([[get_expected_payoff(cs, us, payoff_matrix) for us in user_moves] for cs in computer_moves])
+        user_payoff_matrix = np.array([[get_expected_payoff(us, cs, payoff_matrix) for cs in computer_moves] for us in user_moves])   
 
 
         strategy = refresh_equaliser_if_needed_using_indifference_principles(
@@ -396,7 +539,7 @@ def find_best_response_using_epsilon_greedy(moves: List[dict], opponenet_move: d
     best_responses = []
     highest_payoff = -float('inf')
     for move in moves:
-        payoff = calculate_payoff(move, opponenet_move, payoff_matrix)
+        payoff = get_expected_payoff(move, opponenet_move, payoff_matrix)
         if payoff > highest_payoff:
             highest_payoff = payoff
             best_responses = [move]
@@ -558,9 +701,9 @@ def find_nash_equilibrium_strategy(moves: List[dict], opponent_moves: List[dict]
     """
     # Convert strategies to payoff matrices
     # Row player (computer) payoffs: computer move vs user move
-    row_player_payoffs = np.array([[calculate_payoff(s, os, payoff_matrix) for os in opponent_moves] for s in moves])
+    row_player_payoffs = np.array([[get_expected_payoff(s, os, payoff_matrix) for os in opponent_moves] for s in moves])
     # Column player (user) payoffs: user move vs computer move (flipped indexing)
-    col_player_payoffs = np.array([[calculate_payoff(os, s, payoff_matrix) for s in moves] for os in opponent_moves])
+    col_player_payoffs = np.array([[get_expected_payoff(os, s, payoff_matrix) for s in moves] for os in opponent_moves])
     
     game = nash.Game(row_player_payoffs, col_player_payoffs)
     nash_equilibria = {}
@@ -713,7 +856,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
 
 
     if computer_profile['phases']['p1'][0] <= round_idx <= computer_profile['phases']['p1'][1]:  # Phase 1: Nash Equilibrium
-        computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
+        computer_dominant = check_dominant_move(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
         # Play dominant move randomly (50% chance) instead of always
         if computer_dominant and random.random() < computer_profile['dominant_probabilities']['p1']:
             computer_move = computer_dominant
@@ -728,8 +871,8 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
             if computer_move is None:
                 computer_move = get_a_random_move(game['computer_moves'])
 
-    elif computer_profile['phases']['p2'][0] <= round_idx <= computer_profile['phases']['p2'][1]:  # Phase 2: Greedy Response
-        computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
+    elif computer_profile['phases']['p2'][0] <= round_idx <= computer_profile['phases']['p2'][1]:  # Phase 2: Greedy Best Response
+        computer_dominant = check_dominant_move(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
         # Play dominant move randomly (40% chance) instead of always
         if computer_dominant and random.random() < computer_profile['dominant_probabilities']['p2']:
             computer_move = computer_dominant
@@ -740,7 +883,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
                 computer_move = get_a_random_move(game['computer_moves'])
 
     elif computer_profile['phases']['p3'][0] <= round_idx <= computer_profile['phases']['p3'][1]:  # Phase 3: Mixed Strategy
-        computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
+        computer_dominant = check_dominant_move(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
         # Play dominant move randomly (30% chance) instead of always
         if computer_dominant and random.random() < computer_profile['dominant_probabilities']['p3']:
             computer_move = computer_dominant
@@ -759,21 +902,22 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
     game['state']['last_computer_move'] = computer_move
     game['state']['round_idx'] = round_idx
 
-    # be defensive against the user's dominant move - so override the chosen computer's move with the security level response - do it at 50% chance, other times play Dominant move
-    user_dominant = check_dominant_move(game['user_moves'], computer_move, game['payoff_matrix'])
+    # Respond to user's dominant move with mixed strategy:
+    # - 60% of the time: play best response
+    # - 20% of the time: play security level strategy (safe/defensive)
+    # - 20% of the time: play normal (keep original move)
+    user_dominant = check_dominant_move(game['user_moves'], game['computer_moves'], game['payoff_matrix'])
     if user_dominant and user_move == user_dominant:
-        # 50% chance to play dominant move when user plays dominant move - other times play safe
-        if random.random() < computer_profile['security_level']['prob']:
-            security_level_response = get_security_level_response(game['computer_moves'], user_move, game['payoff_matrix'])
+        rand = random.random()
+        if rand < 0.6:  # 60% - play best response
+            best_response = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon=0.0, payoff_matrix=game['payoff_matrix'])
+            computer_move = best_response if best_response else computer_move
+            game['state']['last_computer_move'] = computer_move
+        elif rand < 0.8:  # 20% - play security level strategy (0.6 to 0.8 = 20%)
+            security_level_response = get_security_level_strategy(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
             computer_move = security_level_response if security_level_response else computer_move
             game['state']['last_computer_move'] = computer_move
-        else:
-            computer_dominant = check_dominant_move(game['computer_moves'], user_move, game['payoff_matrix'])
-            if computer_dominant:
-                computer_move = computer_dominant
-            else:
-                computer_move = get_a_random_move(game['computer_moves'])
-            game['state']['last_computer_move'] = computer_move
+        # else: 20% - play normal (keep original computer_move, already set above)
 
     return user_move, computer_move
 
@@ -816,9 +960,9 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
         # Add moves to history
         iteration_moves.add_moves(user_move, computer_move)
         
-        # Calculate payoffs immediately
-        user_payoff = calculate_payoff(user_move, computer_move, game['payoff_matrix'], is_noise_added=True)
-        computer_payoff = calculate_payoff(computer_move, user_move, game['payoff_matrix'], is_noise_added=True)
+        # Calculate payoffs immediately (with noise for actual scoring)
+        user_payoff = get_realized_payoff(user_move, computer_move, game['payoff_matrix'])
+        computer_payoff = get_realized_payoff(computer_move, user_move, game['payoff_matrix'])
         
         # Debug: Check if payoffs are the expected type
         print(f"Debug: user_payoff type: {type(user_payoff)}, value: {user_payoff}")

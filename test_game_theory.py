@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_response, get_copy_cat_move, get_next_move_based_on_strategy_settings, play_game_round, play_full_game
+from game_theory import check_dominant_move, is_the_move_with_the_better_payoff, calculate_payoff, find_best_response_using_epsilon_greedy, find_nash_equilibrium_strategy, solve_mixed_strategy_indifference_general, get_the_next_move_based_on_mixed_strartegy_probability_indifference, get_security_level_strategy, get_copy_cat_move, get_next_move_based_on_strategy_settings, play_game_round, play_full_game
 
 # Test moves for pure strategies
 @pytest.fixture
@@ -32,6 +32,24 @@ def test_moves_pure():
             "name": "sanction",
             'player': 'user'
 
+        }
+    ]
+
+@pytest.fixture
+def test_opponent_moves_pure():
+    """Opponent moves (computer moves) for testing dominant move detection"""
+    return [
+        {
+            "type": "cooperative",
+            "probability": 1.0,
+            "name": "wait_and_see",
+            'player': 'computer'
+        },
+        {
+            "type": "defective",
+            "probability": 1.0,
+            "name": "sanction",
+            'player': 'computer'
         }
     ]
 
@@ -155,24 +173,18 @@ def test_payoff_matrix_mixed():
         }
     ]
 
-def test_check_dominant_move_pure(test_moves_pure, test_payoff_matrix_pure):
+def test_check_dominant_move_pure(test_moves_pure, test_opponent_moves_pure, test_payoff_matrix_pure):
     """Test dominant move detection with pure strategies"""
-    # Test with a move that should be dominant
-    opponent_move = {"name": "wait_and_see", "type": "cooperative", "probability": 1.0, 'player': 'user'}
-    dominant = check_dominant_move(test_moves_pure, opponent_move, test_payoff_matrix_pure)
+    # Test for dominant strategy - raise_tariffs should be dominant across all opponent moves
+    # Looking at the payoff matrix:
+    # - raise_tariffs vs wait_and_see: user gets 5
+    # - raise_tariffs vs sanction: user gets 1
+    # - open_dialogue vs wait_and_see: user gets 3
+    # - open_dialogue vs sanction: user gets 0
+    # So raise_tariffs is better than open_dialogue in both cases
+    dominant = check_dominant_move(test_moves_pure, test_opponent_moves_pure, test_payoff_matrix_pure)
     assert dominant is not None
-    assert dominant["name"] == "raise_tariffs"  # Raise tariffs should be dominant against wait_and_see
-
-    # Test with sanction - raise_tariffs should be dominant
-    opponent_move = {"name": "sanction", "type": "defective", "probability": 1.0, 'player': 'user'}
-    dominant = check_dominant_move(test_moves_pure, opponent_move, test_payoff_matrix_pure)
-    assert dominant is not None
-    assert dominant["name"] == "raise_tariffs"  # Raise tariffs should be dominant against sanction
-
-    # Test wish no dominant move (using a move not in payoff matrix)
-    opponent_move = {"name": "unknown_move", "type": "cooperative", "probability": 1.0, 'player': 'user'}
-    dominant = check_dominant_move(test_moves_pure, opponent_move, test_payoff_matrix_pure)
-    assert dominant is None  # No dominant move against unknown move
+    assert dominant["name"] == "raise_tariffs"  # Raise tariffs should be dominant across all opponent moves
 
 def test_is_the_move_with_the_better_payoff_pure( test_payoff_matrix_pure):
     """Test payoff comparison between pure strategies"""
@@ -491,10 +503,10 @@ def test_get_the_next_move_based_on_mixed_strartegy_probability_indifference():
     assert next_move is not None
     assert next_move['name'] in [move['name'] for move in moves]  # Next move should be one of our defined moves
  
-def test_get_security_level_response():
-    """Test getting security level response"""
+def test_get_security_level_strategy():
+    """Test getting security level strategy (maximin)"""
     # Define computer moves
-    moves = [
+    computer_moves = [
         {
             "name": "open_dialogue",
             "type": "cooperative",
@@ -515,7 +527,7 @@ def test_get_security_level_response():
         }
     ]
 
-    # Define user moves
+    # Define user moves (opponent moves)
     user_moves = [
         {
             "name": "open_dialogue",
@@ -586,23 +598,23 @@ def test_get_security_level_response():
         }
     ]
 
- 
+    # Test security level strategy (maximin)
+    # For computer moves against all user moves:
+    # - open_dialogue: worst case is 1 (against open_dialogue)
+    # - raise_tariffs: worst case is 1 (against raise_tariffs)
+    # - wait_and_see: worst case is 0 (against raise_tariffs)
+    # So maximin should be open_dialogue or raise_tariffs (both guarantee at least 1)
     
-    security_response = get_security_level_response(
-        moves=moves,
-        opponent_move={
-            "name": "wait_and_see",
-            "type": "cooperative",
-            "probability": 1.0,
-            'player': 'user'
-        },
+    security_strategy = get_security_level_strategy(
+        my_moves=computer_moves,
+        possible_opponent_moves=user_moves,
         payoff_matrix=test_payoff_matrix
     )
     
-    print("Security Level Response:")
-    print(security_response)
-    assert security_response is not None
-    assert security_response['name'] in [move['name'] for move in user_moves]  # Response should be one of our defined moves
+    print("Security Level Strategy:")
+    print(security_strategy)
+    assert security_strategy is not None
+    assert security_strategy['name'] in [move['name'] for move in computer_moves]  # Strategy should be one of our defined moves
  
 def test_get_copy_cat_move():
     """Test getting copy cat move"""
