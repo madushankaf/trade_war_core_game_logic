@@ -189,8 +189,8 @@ def run_single_simulation(
         final_user_payoff = result.get('final_user_payoff', 0.0)
         final_computer_payoff = result.get('final_computer_payoff', 0.0)
         
-        # Determine winner
-        user_won = final_user_payoff > final_computer_payoff
+        # Determine winner - explicitly convert to Python bool to ensure JSON serializability
+        user_won = bool(final_user_payoff > final_computer_payoff)
         payoff_difference = final_user_payoff - final_computer_payoff
         
         return {
