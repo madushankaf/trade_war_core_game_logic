@@ -899,6 +899,14 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
             if computer_move is None:
                 computer_move = get_a_random_move(game['computer_moves'])
 
+    else:
+        # Fallback: if round_idx is outside all phase ranges, use a default strategy
+        # Use best response with epsilon-greedy as fallback
+        epsilon = calculate_epsilon(computer_profile, round_idx)
+        computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon, game['payoff_matrix'])
+        if computer_move is None:
+            computer_move = get_a_random_move(game['computer_moves'])
+
     game['state']['last_computer_move'] = computer_move
     game['state']['round_idx'] = round_idx
 

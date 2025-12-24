@@ -288,6 +288,7 @@ def run_simulation_suite(
     for strategy in user_strategies:
         logger.info(f"Running {num_simulations} simulations for strategy: {strategy}")
         strategy_results = []
+        failed_simulations = []  # Track failed simulations with error details
         
         # Sample random number of rounds for each simulation using normal distribution
         # Clip to ensure values are within [rounds_min, rounds_max] range
@@ -311,7 +312,21 @@ def run_simulation_suite(
                 )
                 strategy_results.append(result)
             except Exception as e:
+                import traceback
+                error_traceback = traceback.format_exc()
+                error_details = {
+                    'simulation_number': sim_num + 1,
+                    'simulation_id': simulation_id,
+                    'strategy': strategy,
+                    'computer_profile': computer_profile_name,
+                    'num_rounds': random_num_rounds,
+                    'error_message': str(e),
+                    'error_type': type(e).__name__,
+                    'traceback': error_traceback
+                }
+                failed_simulations.append(error_details)
                 logger.warning(f"Simulation {simulation_id} failed: {str(e)}")
+                logger.debug(f"Full traceback for {simulation_id}:\n{error_traceback}")
                 # Continue with other simulations even if one fails
                 continue
             
@@ -342,7 +357,9 @@ def run_simulation_suite(
                 'win_rate': win_rate,
                 'std_user_payoff': std_user_payoff,
                 'std_computer_payoff': std_computer_payoff,
-                'num_successful_simulations': len(strategy_results)
+                'num_successful_simulations': len(strategy_results),
+                'num_failed_simulations': len(failed_simulations),
+                'failed_simulations': failed_simulations  # Include error details
             })
         else:
             logger.error(f"No successful simulations for strategy: {strategy}")
@@ -355,7 +372,9 @@ def run_simulation_suite(
                 'win_rate': 0.0,
                 'std_user_payoff': 0.0,
                 'std_computer_payoff': 0.0,
-                'num_successful_simulations': 0
+                'num_successful_simulations': 0,
+                'num_failed_simulations': len(failed_simulations),
+                'failed_simulations': failed_simulations  # Include error details even if all failed
             })
     
     # Create summary

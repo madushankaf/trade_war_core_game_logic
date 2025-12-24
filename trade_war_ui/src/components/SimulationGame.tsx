@@ -19,7 +19,15 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Collapse,
+  IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ErrorIcon from '@mui/icons-material/Error';
 import { Country, GameModel } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
 import { profiles } from '../data/profiles';
@@ -28,6 +36,17 @@ import { gameApi } from '../services/api';
 
 interface SimulationGameProps {
   onBackToSetup?: () => void;
+}
+
+interface FailedSimulation {
+  simulation_number: number;
+  simulation_id: string;
+  strategy: string;
+  computer_profile: string;
+  num_rounds: number;
+  error_message: string;
+  error_type: string;
+  traceback?: string;
 }
 
 interface SimulationResult {
@@ -40,6 +59,8 @@ interface SimulationResult {
   std_user_payoff: number;
   std_computer_payoff: number;
   num_successful_simulations: number;
+  num_failed_simulations?: number;
+  failed_simulations?: FailedSimulation[];
 }
 
 interface SimulationSuiteResponse {
@@ -475,6 +496,7 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                     <TableCell align="right"><strong>User Win Rate %</strong></TableCell>
                     <TableCell align="right"><strong>Computer Win Rate %</strong></TableCell>
                     <TableCell align="right"><strong>Successful Sims</strong></TableCell>
+                    <TableCell align="right"><strong>Failed Sims</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -495,26 +517,130 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                       computerWinRate = 100 - result.win_rate;
                     }
                     
+                    const numFailed = result.num_failed_simulations || 0;
+                    const hasFailures = numFailed > 0;
+                    
                     return (
-                      <TableRow key={result.user_strategy}>
-                        <TableCell>
-                          <Chip 
-                            label={result.user_strategy} 
-                            color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
-                          />
-                        </TableCell>
-                        <TableCell align="right">{result.average_user_payoff.toFixed(2)}</TableCell>
-                        <TableCell align="right">{result.std_user_payoff.toFixed(2)}</TableCell>
-                        <TableCell align="right">{result.average_computer_payoff.toFixed(2)}</TableCell>
-                        <TableCell align="right">{result.win_rate.toFixed(1)}%</TableCell>
-                        <TableCell align="right">{computerWinRate.toFixed(1)}%</TableCell>
-                        <TableCell align="right">{result.num_successful_simulations}</TableCell>
-                      </TableRow>
+                      <React.Fragment key={result.user_strategy}>
+                        <TableRow>
+                          <TableCell>
+                            <Chip 
+                              label={result.user_strategy} 
+                              color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell align="right">{result.average_user_payoff.toFixed(2)}</TableCell>
+                          <TableCell align="right">{result.std_user_payoff.toFixed(2)}</TableCell>
+                          <TableCell align="right">{result.average_computer_payoff.toFixed(2)}</TableCell>
+                          <TableCell align="right">{result.win_rate.toFixed(1)}%</TableCell>
+                          <TableCell align="right">{computerWinRate.toFixed(1)}%</TableCell>
+                          <TableCell align="right">{result.num_successful_simulations}</TableCell>
+                          <TableCell align="right">
+                            {hasFailures ? (
+                              <Chip 
+                                label={numFailed} 
+                                color="error" 
+                                size="small"
+                                icon={<ErrorIcon />}
+                              />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">0</Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
                     );
                   })}
                 </TableBody>
               </Table>
             </TableContainer>
+
+            {/* Failed Simulations Errors Section */}
+            {simulationResults.results.some(r => r.num_failed_simulations && r.num_failed_simulations > 0) && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ErrorIcon /> Failed Simulations - Error Details
+                </Typography>
+                {simulationResults.results.map((result) => {
+                  if (!result.failed_simulations || result.failed_simulations.length === 0) {
+                    return null;
+                  }
+                  
+                  return (
+                    <Accordion key={`errors-${result.user_strategy}`} sx={{ mt: 1 }}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {result.user_strategy}
+                          </Typography>
+                          <Chip 
+                            label={`${result.failed_simulations.length} Failed`} 
+                            color="error" 
+                            size="small"
+                          />
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {result.failed_simulations.map((failed, idx) => (
+                            <Card key={idx} variant="outlined" sx={{ bgcolor: 'rgba(211, 47, 47, 0.08)' }}>
+                              <CardContent>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                    Simulation #{failed.simulation_number} - {failed.simulation_id}
+                                  </Typography>
+                                  <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 1, fontSize: '0.875rem' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Strategy:</Typography>
+                                    <Typography variant="body2">{failed.strategy}</Typography>
+                                    
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Profile:</Typography>
+                                    <Typography variant="body2">{failed.computer_profile}</Typography>
+                                    
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Rounds:</Typography>
+                                    <Typography variant="body2">{failed.num_rounds}</Typography>
+                                    
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Error Type:</Typography>
+                                    <Typography variant="body2" sx={{ color: 'error.main' }}>{failed.error_type}</Typography>
+                                    
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Error Message:</Typography>
+                                    <Typography variant="body2" sx={{ color: 'error.main', fontFamily: 'monospace' }}>
+                                      {failed.error_message}
+                                    </Typography>
+                                  </Box>
+                                  
+                                  {failed.traceback && (
+                                    <Box sx={{ mt: 2 }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                        Full Traceback:
+                                      </Typography>
+                                      <Paper 
+                                        variant="outlined" 
+                                        sx={{ 
+                                          p: 1, 
+                                          bgcolor: 'rgba(0, 0, 0, 0.05)',
+                                          maxHeight: 200,
+                                          overflow: 'auto',
+                                          fontFamily: 'monospace',
+                                          fontSize: '0.75rem'
+                                        }}
+                                      >
+                                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                          {failed.traceback}
+                                        </pre>
+                                      </Paper>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  );
+                })}
+              </Box>
+            )}
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
               <Button
