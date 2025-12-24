@@ -368,7 +368,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                   />
                   <Tooltip 
                     labelFormatter={(label) => `Round ${label}`}
-                    formatter={(value: number, name: string, props: any) => [
+                    formatter={(value, name, props) => [
                       props.payload.winnerName,
                       'Winner'
                     ]}
@@ -484,8 +484,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                     ))}
                   </Pie>
                   <Tooltip 
-                    formatter={(value: number, name: string, props: any) => [
-                      `${((props.payload.percent || 0) * 100).toFixed(1)}% (${value} rounds)`,
+                    formatter={(value, name, props) => [
+                      `${((props.payload.percent || 0) * 100).toFixed(1)}% (${(value as number) || 0} rounds)`,
                       name
                     ]}
                     contentStyle={{ fontSize: '1rem' }}
@@ -532,8 +532,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                       style={{ fontSize: '1rem' }}
                     />
                     <Tooltip 
-                      formatter={(value: number, name: string, props: any) => [
-                        `${value} times (${props.payload.percentage}%)`,
+                      formatter={(value, name, props) => [
+                        `${(value as number) || 0} times (${props.payload.percentage}%)`,
                         'Usage'
                       ]}
                       contentStyle={{ fontSize: '1rem' }}
@@ -571,8 +571,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                       style={{ fontSize: '1rem' }}
                     />
                     <Tooltip 
-                      formatter={(value: number, name: string, props: any) => [
-                        `${value} times (${props.payload.percentage}%)`,
+                      formatter={(value, name, props) => [
+                        `${(value as number) || 0} times (${props.payload.percentage}%)`,
                         'Usage'
                       ]}
                       contentStyle={{ fontSize: '1rem' }}
