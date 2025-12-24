@@ -472,26 +472,46 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                     <TableCell align="right"><strong>Avg User Payoff</strong></TableCell>
                     <TableCell align="right"><strong>Std Dev</strong></TableCell>
                     <TableCell align="right"><strong>Avg Computer Payoff</strong></TableCell>
-                    <TableCell align="right"><strong>Win Rate %</strong></TableCell>
+                    <TableCell align="right"><strong>User Win Rate %</strong></TableCell>
+                    <TableCell align="right"><strong>Computer Win Rate %</strong></TableCell>
                     <TableCell align="right"><strong>Successful Sims</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {simulationResults.results.map((result) => (
-                    <TableRow key={result.user_strategy}>
-                      <TableCell>
-                        <Chip 
-                          label={result.user_strategy} 
-                          color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell align="right">{result.average_user_payoff.toFixed(2)}</TableCell>
-                      <TableCell align="right">{result.std_user_payoff.toFixed(2)}</TableCell>
-                      <TableCell align="right">{result.average_computer_payoff.toFixed(2)}</TableCell>
-                      <TableCell align="right">{result.win_rate.toFixed(1)}%</TableCell>
-                      <TableCell align="right">{result.num_successful_simulations}</TableCell>
-                    </TableRow>
-                  ))}
+                  {simulationResults.results.map((result) => {
+                    // Calculate computer win rate
+                    // If simulations array is available and not too large, calculate from data
+                    // Otherwise, use 100 - user_win_rate (assuming no ties or treating ties as losses)
+                    let computerWinRate: number;
+                    if (result.simulations && result.simulations.length > 0 && result.simulations.length <= 1000) {
+                      // Calculate from actual data for accuracy (handles ties)
+                      const computerWins = result.simulations.filter((sim: any) => 
+                        sim.final_computer_payoff > sim.final_user_payoff
+                      ).length;
+                      computerWinRate = (computerWins / result.simulations.length) * 100;
+                    } else {
+                      // Fallback: assume computer win rate is 100 - user win rate
+                      // (ties would be excluded from both, but this is a reasonable approximation)
+                      computerWinRate = 100 - result.win_rate;
+                    }
+                    
+                    return (
+                      <TableRow key={result.user_strategy}>
+                        <TableCell>
+                          <Chip 
+                            label={result.user_strategy} 
+                            color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
+                          />
+                        </TableCell>
+                        <TableCell align="right">{result.average_user_payoff.toFixed(2)}</TableCell>
+                        <TableCell align="right">{result.std_user_payoff.toFixed(2)}</TableCell>
+                        <TableCell align="right">{result.average_computer_payoff.toFixed(2)}</TableCell>
+                        <TableCell align="right">{result.win_rate.toFixed(1)}%</TableCell>
+                        <TableCell align="right">{computerWinRate.toFixed(1)}%</TableCell>
+                        <TableCell align="right">{result.num_successful_simulations}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>

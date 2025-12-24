@@ -25,8 +25,25 @@ profile_manager = ProfileManager()
 game_manager = GameSessionManager(profile_manager)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+# Configure CORS explicitly to allow all origins, methods, and headers
+# This ensures proper CORS handling in production (Gunicorn + eventlet)
+CORS(app, 
+     resources={r"/*": {
+         "origins": "*",
+         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization"],
+         "supports_credentials": False
+     }})
 socketio = SocketIO(app, cors_allowed_origins="*")  # Enable SocketIO with CORS
+
+# Explicit CORS headers as backup (ensures headers are always present)
+@app.after_request
+def after_request(response):
+    """Add CORS headers to all responses"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+    return response
 
 # WebSocket event handlers
 @socketio.on('join_game')
