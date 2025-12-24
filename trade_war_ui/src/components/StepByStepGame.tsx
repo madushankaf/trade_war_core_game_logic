@@ -51,7 +51,6 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
   const [runningTotals, setRunningTotals] = useState({ user_total: 0, computer_total: 0 });
   const [gameStatus, setGameStatus] = useState<'in_progress' | 'completed'>('in_progress');
   const [totalRounds, setTotalRounds] = useState<number>(20);
-  const [lastOpponentMove, setLastOpponentMove] = useState<string | null>(null);
 
   // Update available moves when countries are selected
   React.useEffect(() => {
@@ -214,7 +213,6 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
       setCurrentRound(roundResult.current_round);
       setRunningTotals(roundResult.running_totals);
       setGameStatus(roundResult.game_status as 'in_progress' | 'completed');
-      setLastOpponentMove(roundResult.computer_move.name);
 
       setLoading(false);
     } catch (err: any) {
@@ -246,7 +244,6 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
     setRunningTotals({ user_total: 0, computer_total: 0 });
     setGameStatus('in_progress');
     setTotalRounds(20);
-    setLastOpponentMove(null);
   };
 
   const getMoveType = (moveName: string) => {
