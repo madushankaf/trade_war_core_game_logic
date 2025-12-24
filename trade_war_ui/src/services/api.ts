@@ -306,6 +306,48 @@ export const gameApi = {
       throw new Error(error.response?.data?.error || 'Failed to delete game');
     }
   },
+
+  // Simulation methods
+  /**
+   * Run a Monte Carlo simulation suite
+   * @param baseGameConfig Base game configuration
+   * @param userStrategies List of user strategies to test
+   * @param computerProfileName Computer profile name
+   * @param numSimulations Number of simulations per strategy (default: 5000)
+   * @param roundsMean Mean number of rounds (optional)
+   * @param roundsStd Standard deviation for rounds (optional)
+   * @param roundsMin Minimum rounds (optional, default: 50)
+   * @param roundsMax Maximum rounds (optional, default: 500)
+   */
+  runSimulationSuite: async (
+    baseGameConfig: any,
+    userStrategies: string[],
+    computerProfileName: string,
+    numSimulations: number = 5000,
+    roundsMean?: number,
+    roundsStd?: number,
+    roundsMin: number = 50,
+    roundsMax: number = 500
+  ): Promise<any> => {
+    try {
+      const requestData: any = {
+        base_game_config: baseGameConfig,
+        user_strategies: userStrategies,
+        computer_profile_name: computerProfileName,
+        num_simulations: numSimulations,
+        rounds_min: roundsMin,
+        rounds_max: roundsMax,
+      };
+      if (roundsMean !== undefined) requestData.rounds_mean = roundsMean;
+      if (roundsStd !== undefined) requestData.rounds_std = roundsStd;
+
+      const response = await api.post('/simulation/suite', requestData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error running simulation suite:', error);
+      throw new Error(error.response?.data?.error || 'Failed to run simulation suite');
+    }
+  },
 };
 
 export default api; 

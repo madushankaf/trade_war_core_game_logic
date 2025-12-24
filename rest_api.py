@@ -11,6 +11,12 @@ from game_theory import play_full_game
 from game_model import GameModel
 from profile_manager import ProfileManager
 from game_session import GameSessionManager
+from game_simulation import (
+    run_single_simulation,
+    run_simulation_suite,
+    run_multi_profile_simulation,
+    create_default_game_config
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -380,6 +386,310 @@ def delete_game(game_id):
     except Exception as e:
         logger.error(f"Error deleting game: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
+# Simulation Endpoints
+
+@app.route('/simulation/single', methods=['POST'])
+def run_single_simulation_endpoint():
+    """
+    Run a single simulation: one user strategy against one computer profile.
+    
+    Request body:
+    {
+        "base_game_config": {
+            "user_moves": [...],
+            "computer_moves": [...],
+            "payoff_matrix": [...]
+        },
+        "user_strategy": "tit_for_tat",  # or "copy_cat", "grim_trigger", "random", "mixed"
+        "computer_profile_name": "Hawkish",
+        "num_rounds": 200  # optional, overrides profile default
+    }
+    
+    Returns:
+    {
+        "simulation_id": str,
+        "user_strategy": str,
+        "computer_profile": str,
+        "final_user_payoff": float,
+        "final_computer_payoff": float,
+        "num_rounds": int,
+        "user_won": bool,
+        "payoff_difference": float
+    }
+    """
+    try:
+        data = request.get_json()
+        is_valid, error_msg = validate_json_data(data)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Validate required fields
+        required_fields = ['base_game_config', 'user_strategy', 'computer_profile_name']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Validate strategy
+        valid_strategies = ['copy_cat', 'tit_for_tat', 'grim_trigger', 'random', 'mixed']
+        if data['user_strategy'] not in valid_strategies:
+            return jsonify({'error': f'Invalid strategy. Must be one of: {valid_strategies}'}), 400
+        
+        # Run simulation
+        result = run_single_simulation(
+            base_game_config=data['base_game_config'],
+            user_strategy=data['user_strategy'],
+            computer_profile_name=data['computer_profile_name'],
+            profile_manager=profile_manager,
+            num_rounds=data.get('num_rounds')
+        )
+        
+        return jsonify(result), 200
+        
+    except ValueError as e:
+        logger.error(f"Validation error in simulation: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error running simulation: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+
+@app.route('/simulation/suite', methods=['POST'])
+def run_simulation_suite_endpoint():
+    """
+    Run a Monte Carlo simulation suite: multiple user strategies against one computer profile.
+    
+    Uses a Monte Carlo approach where each simulation runs for a randomly sampled number of rounds.
+    
+    Request body:
+    {
+        "base_game_config": {
+            "user_moves": [...],
+            "computer_moves": [...],
+            "payoff_matrix": [...]
+        },
+        "user_strategies": ["copy_cat", "tit_for_tat", "grim_trigger", "random"],
+        "computer_profile_name": "Hawkish",
+        "num_simulations": 5000,  # optional, default: 5000
+        "rounds_mean": 200,  # optional, mean rounds for distribution (uses profile default if not provided)
+        "rounds_std": 50,  # optional, standard deviation for rounds distribution (default: 50)
+        "rounds_min": 50,  # optional, minimum rounds (default: 50)
+        "rounds_max": 500  # optional, maximum rounds (default: 500)
+    }
+    
+    Returns:
+    {
+        "computer_profile": str,
+        "num_simulations": int,
+        "rounds_statistics": {
+            "mean": float,
+            "std": float,
+            "min": int,
+            "max": int
+        },
+        "results": [
+            {
+                "user_strategy": str,
+                "simulations": [...],  # Note: large list of results
+                "average_user_payoff": float,
+                "average_computer_payoff": float,
+                "average_payoff_difference": float,
+                "win_rate": float,
+                "std_user_payoff": float,
+                "std_computer_payoff": float,
+                "num_successful_simulations": int
+            },
+            ...
+        ],
+        "summary": {
+            "best_strategy": str,
+            "worst_strategy": str,
+            "most_wins": str
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        is_valid, error_msg = validate_json_data(data)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Validate required fields
+        required_fields = ['base_game_config', 'user_strategies', 'computer_profile_name']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Validate strategies
+        valid_strategies = ['copy_cat', 'tit_for_tat', 'grim_trigger', 'random', 'mixed']
+        if not isinstance(data['user_strategies'], list):
+            return jsonify({'error': 'user_strategies must be a list'}), 400
+        
+        for strategy in data['user_strategies']:
+            if strategy not in valid_strategies:
+                return jsonify({'error': f'Invalid strategy: {strategy}. Must be one of: {valid_strategies}'}), 400
+        
+        # Run Monte Carlo simulation suite
+        result = run_simulation_suite(
+            base_game_config=data['base_game_config'],
+            user_strategies=data['user_strategies'],
+            computer_profile_name=data['computer_profile_name'],
+            profile_manager=profile_manager,
+            num_simulations=data.get('num_simulations', 5000),
+            rounds_mean=data.get('rounds_mean'),
+            rounds_std=data.get('rounds_std'),
+            rounds_min=data.get('rounds_min', 50),
+            rounds_max=data.get('rounds_max', 500)
+        )
+        
+        return jsonify(result), 200
+        
+    except ValueError as e:
+        logger.error(f"Validation error in simulation suite: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error running simulation suite: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+
+@app.route('/simulation/multi-profile', methods=['POST'])
+def run_multi_profile_simulation_endpoint():
+    """
+    Run Monte Carlo simulations across multiple computer profiles.
+    
+    Request body:
+    {
+        "base_game_config": {
+            "user_moves": [...],
+            "computer_moves": [...],
+            "payoff_matrix": [...]
+        },
+        "user_strategies": ["tit_for_tat", "grim_trigger"],
+        "computer_profiles": ["Hawkish", "Dovish", "Opportunist"],
+        "num_simulations": 5000,  # optional, default: 5000
+        "rounds_mean": 200,  # optional, mean rounds for distribution
+        "rounds_std": 50,  # optional, standard deviation for rounds distribution (default: 50)
+        "rounds_min": 50,  # optional, minimum rounds (default: 50)
+        "rounds_max": 500  # optional, maximum rounds (default: 500)
+    }
+    
+    Returns:
+    {
+        "profiles": {
+            "profile_name_1": {suite_results},
+            "profile_name_2": {suite_results},
+            ...
+        },
+        "cross_profile_summary": {
+            "best_strategy_overall": str,
+            "strategy_averages": {strategy: avg_payoff}
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        is_valid, error_msg = validate_json_data(data)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Validate required fields
+        required_fields = ['base_game_config', 'user_strategies', 'computer_profiles']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Validate strategies
+        valid_strategies = ['copy_cat', 'tit_for_tat', 'grim_trigger', 'random', 'mixed']
+        if not isinstance(data['user_strategies'], list):
+            return jsonify({'error': 'user_strategies must be a list'}), 400
+        
+        for strategy in data['user_strategies']:
+            if strategy not in valid_strategies:
+                return jsonify({'error': f'Invalid strategy: {strategy}. Must be one of: {valid_strategies}'}), 400
+        
+        # Validate profiles is a list
+        if not isinstance(data['computer_profiles'], list):
+            return jsonify({'error': 'computer_profiles must be a list'}), 400
+        
+        # Run multi-profile Monte Carlo simulation
+        result = run_multi_profile_simulation(
+            base_game_config=data['base_game_config'],
+            user_strategies=data['user_strategies'],
+            computer_profiles=data['computer_profiles'],
+            profile_manager=profile_manager,
+            num_simulations=data.get('num_simulations', 5000),
+            rounds_mean=data.get('rounds_mean'),
+            rounds_std=data.get('rounds_std'),
+            rounds_min=data.get('rounds_min', 50),
+            rounds_max=data.get('rounds_max', 500)
+        )
+        
+        return jsonify(result), 200
+        
+    except ValueError as e:
+        logger.error(f"Validation error in multi-profile simulation: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error running multi-profile simulation: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+
+@app.route('/simulation/default-config', methods=['POST'])
+def create_default_config_endpoint():
+    """
+    Create a default game configuration from move names.
+    
+    Request body:
+    {
+        "move_names": ["open_dialogue", "raise_tariffs", "wait_and_see"],
+        "move_types": {  # optional
+            "open_dialogue": "cooperative",
+            "raise_tariffs": "defective",
+            "wait_and_see": "cooperative"
+        },
+        "payoff_matrix": [...]  # optional, if not provided generates default
+    }
+    
+    Returns:
+    {
+        "user_moves": [...],
+        "computer_moves": [...],
+        "payoff_matrix": [...]
+    }
+    """
+    try:
+        data = request.get_json()
+        is_valid, error_msg = validate_json_data(data)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Validate required fields
+        if 'move_names' not in data:
+            return jsonify({'error': 'Missing required field: move_names'}), 400
+        
+        if not isinstance(data['move_names'], list):
+            return jsonify({'error': 'move_names must be a list'}), 400
+        
+        # Create default config
+        config = create_default_game_config(
+            move_names=data['move_names'],
+            move_types=data.get('move_types'),
+            payoff_matrix=data.get('payoff_matrix')
+        )
+        
+        return jsonify(config), 200
+        
+    except Exception as e:
+        logger.error(f"Error creating default config: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     import os

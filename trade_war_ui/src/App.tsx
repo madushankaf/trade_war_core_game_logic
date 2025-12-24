@@ -4,6 +4,7 @@ import { CssBaseline, Box, AppBar, Toolbar, Typography, Button } from '@mui/mate
 import GameSetup from './components/GameSetup';
 import GameDashboard from './components/GameDashboard';
 import StepByStepGame from './components/StepByStepGame';
+import SimulationGame from './components/SimulationGame';
 import { GameModel } from './types/game';
 
 // Create a custom theme for the trade war game
@@ -50,7 +51,7 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentView, setCurrentView] = useState<'setup' | 'game' | 'step-by-step'>('setup');
+  const [currentView, setCurrentView] = useState<'setup' | 'game' | 'step-by-step' | 'simulate'>('setup');
   const [gameData, setGameData] = useState<GameModel | null>(null);
 
   const handleGameStart = (data: GameModel) => {
@@ -66,37 +67,49 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', overflow: 'hidden' }}>
         {/* Navigation Bar */}
-        <AppBar position="static" sx={{ mb: 3 }}>
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+        <AppBar position="static" sx={{ flexShrink: 0 }}>
+          <Toolbar sx={{ minHeight: '40px !important', py: 0.25 }}>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontSize: '0.875rem' }}>
               🎮 Trade War Game
             </Typography>
             <Button 
               color="inherit" 
               onClick={() => setCurrentView('setup')}
-              sx={{ mr: 2 }}
+              sx={{ mr: 0.5, fontSize: '0.75rem', minWidth: 'auto', px: 0.75, py: 0.25 }}
             >
               Game Setup
             </Button>
             <Button 
               color="inherit" 
               onClick={() => setCurrentView('step-by-step')}
+              sx={{ mr: 0.5, fontSize: '0.75rem', minWidth: 'auto', px: 0.75, py: 0.25 }}
             >
               Step-by-Step
+            </Button>
+            <Button 
+              color="inherit" 
+              onClick={() => setCurrentView('simulate')}
+              sx={{ fontSize: '0.75rem', minWidth: 'auto', px: 0.75, py: 0.25 }}
+            >
+              Simulate
             </Button>
           </Toolbar>
         </AppBar>
 
         {/* Main Content */}
-        {currentView === 'setup' ? (
-          <GameSetup onGameStart={handleGameStart} />
-        ) : currentView === 'step-by-step' ? (
-          <StepByStepGame onBackToSetup={() => setCurrentView('setup')} />
-        ) : (
-          gameData && <GameDashboard gameData={gameData} onBackToSetup={handleBackToSetup} />
-        )}
+        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {currentView === 'setup' ? (
+            <GameSetup onGameStart={handleGameStart} />
+          ) : currentView === 'step-by-step' ? (
+            <StepByStepGame onBackToSetup={() => setCurrentView('setup')} />
+          ) : currentView === 'simulate' ? (
+            <SimulationGame onBackToSetup={() => setCurrentView('setup')} />
+          ) : (
+            gameData && <GameDashboard gameData={gameData} onBackToSetup={handleBackToSetup} />
+          )}
+        </Box>
       </Box>
     </ThemeProvider>
   );

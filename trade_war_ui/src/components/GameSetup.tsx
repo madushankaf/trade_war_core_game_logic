@@ -231,23 +231,23 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 3 }, pb: 4 }}>
-      <Typography variant="h4" gutterBottom align="center" sx={{ mb: 4 }}>
+    <Box sx={{ width: '100%', mx: 'auto', p: { xs: 2, sm: 3 }, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Typography variant="h4" gutterBottom align="center" sx={{ mb: 2, fontSize: '2rem', fontWeight: 'bold', flexShrink: 0 }}>
         🎮 Trade War Game Setup
       </Typography>
       
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, flex: 1, overflow: 'auto', pb: 1 }}>
         {/* Country Selection */}
         <Box>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 1.5, fontWeight: 'bold', fontSize: '1.25rem' }}>
                 Select Your Country
               </Typography>
               <Box sx={{ 
                 display: 'grid', 
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
-                gap: 2,
+                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(5, 1fr)' },
+                gap: 1.5,
                 mt: 1 
               }}>
                 {countries.map((country) => {
@@ -270,16 +270,16 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                         height: '100%'
                       }}
                     >
-                      <CardContent sx={{ textAlign: 'center', py: 2, '&:last-child': { pb: 2 } }}>
-                        <Typography variant="h4" sx={{ mb: 1 }}>
+                      <CardContent sx={{ textAlign: 'center', py: 1.5, px: 1, '&:last-child': { pb: 1.5 } }}>
+                        <Typography variant="h3" sx={{ mb: 1, fontSize: '2.5rem' }}>
                           {country.flag}
                         </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                        <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', fontSize: '1rem', lineHeight: 1.3 }}>
                           {country.name}
                         </Typography>
                         {isSelected && (
-                          <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
-                            Selected
+                          <Typography variant="body1" color="primary" sx={{ display: 'block', mt: 0.5, fontSize: '1.2rem', fontWeight: 'bold' }}>
+                            ✓
                           </Typography>
                         )}
                       </CardContent>
@@ -293,14 +293,14 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
 
         <Box>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 1.5, fontWeight: 'bold', fontSize: '1.25rem' }}>
                 Select Opponent Country
               </Typography>
               <Box sx={{ 
                 display: 'grid', 
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
-                gap: 2,
+                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(5, 1fr)' },
+                gap: 1.5,
                 mt: 1 
               }}>
                 {countries
@@ -329,16 +329,16 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                           height: '100%'
                         }}
                       >
-                        <CardContent sx={{ textAlign: 'center', py: 2, '&:last-child': { pb: 2 } }}>
-                          <Typography variant="h4" sx={{ mb: 1 }}>
+                        <CardContent sx={{ textAlign: 'center', py: 1.5, px: 1, '&:last-child': { pb: 1.5 } }}>
+                          <Typography variant="h3" sx={{ mb: 1, fontSize: '2.5rem' }}>
                             {country.flag}
                           </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                          <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', fontSize: '1rem', lineHeight: 1.3 }}>
                             {country.name}
                           </Typography>
                           {isSelected && (
-                            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
-                              Selected
+                            <Typography variant="body1" color="primary" sx={{ display: 'block', mt: 0.5, fontSize: '1.2rem', fontWeight: 'bold' }}>
+                              ✓
                             </Typography>
                           )}
                         </CardContent>
@@ -354,17 +354,17 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         {computerCountry && (
           <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
             <Card sx={{ bgcolor: 'background.default', border: '2px solid', borderColor: 'divider' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
                   🤖 Computer Behavior Profile
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Choose how the computer opponent will behave during the game. Each profile has a different strategy and approach.
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: 'block', fontSize: '1rem' }}>
+                  Choose how the computer opponent will behave during the game.
                 </Typography>
                 <Box sx={{ 
                   display: 'grid', 
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
-                  gap: 2
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
+                  gap: 1.5
                 }}>
                   {Object.entries(profiles).map(([profileName, profileData]) => {
                     const isSelected = selectedProfile === profileName;
@@ -387,10 +387,10 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                           }
                         }}
                       >
-                        <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+                        <CardContent sx={{ py: 1.5, px: 1.5, '&:last-child': { pb: 1.5 } }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                             <Typography 
-                              variant="subtitle1" 
+                              variant="body1" 
                               sx={{ 
                                 fontWeight: isSelected ? 'bold' : 600,
                                 fontSize: '1rem',
@@ -405,12 +405,12 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                                   bgcolor: 'secondary.main',
                                   color: 'white',
                                   borderRadius: '50%',
-                                  width: 24,
-                                  height: 24,
+                                  width: 28,
+                                  height: 28,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontSize: '0.875rem',
+                                  fontSize: '1rem',
                                   fontWeight: 'bold'
                                 }}
                               >
@@ -422,8 +422,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                             variant="body2" 
                             color="text.secondary" 
                             sx={{ 
-                              fontSize: '0.875rem',
-                              lineHeight: 1.5
+                              fontSize: '0.9rem',
+                              lineHeight: 1.4
                             }}
                           >
                             {profileData.description}
@@ -434,9 +434,9 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   })}
                 </Box>
                 {selectedProfile && (
-                  <Box sx={{ mt: 2, p: 2, bgcolor: 'secondary.light', borderRadius: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                      <strong>Selected:</strong> {selectedProfile} - {profiles[selectedProfile as keyof typeof profiles]?.description}
+                  <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'secondary.light', borderRadius: 1 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 'medium', fontSize: '1rem' }}>
+                      <strong>Selected:</strong> {selectedProfile}
                     </Typography>
                   </Box>
                 )}
@@ -471,19 +471,19 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         {/* Strategy Configuration */}
         <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 1.5, fontWeight: 'bold', fontSize: '1.25rem' }}>
                 Your Strategy Configuration
               </Typography>
               
               {/* Strategy Type Tiles */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', mb: 1, display: 'block', fontSize: '1rem' }}>
                   Strategy Type
                 </Typography>
                 <Box sx={{ 
                   display: 'grid', 
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(5, 1fr)' },
                   gap: 1.5
                 }}>
                   {strategies.map((strat) => {
@@ -505,16 +505,16 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                           }
                         }}
                       >
-                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5 }}>
+                        <CardContent sx={{ py: 1.5, px: 1.5, '&:last-child': { pb: 1.5 } }}>
+                          <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5, display: 'block', fontSize: '1rem' }}>
                             {strat.label}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ display: 'block', fontSize: '0.875rem', lineHeight: 1.4 }}>
                             {strat.description}
                           </Typography>
                           {isSelected && (
-                            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold' }}>
-                              ✓ Selected
+                            <Typography variant="body1" color="primary" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold', fontSize: '1.2rem' }}>
+                              ✓
                             </Typography>
                           )}
                         </CardContent>
@@ -526,12 +526,12 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
 
               {/* First Move Tiles */}
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                <Typography variant="body1" gutterBottom sx={{ fontWeight: 'bold', mb: 1, display: 'block', fontSize: '1rem' }}>
                   First Move
                 </Typography>
                 <Box sx={{ 
                   display: 'grid', 
-                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                  gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(5, 1fr)' },
                   gap: 1.5
                 }}>
                   {defaultMoves
@@ -559,19 +559,19 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                             }
                           }}
                         >
-                          <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                            <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5 }}>
+                          <CardContent sx={{ textAlign: 'center', py: 1.5, px: 1, '&:last-child': { pb: 1.5 } }}>
+                            <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5, display: 'block', fontSize: '0.9rem' }}>
                               {move.name.replace('_', ' ').toUpperCase()}
                             </Typography>
                             <Chip 
                               label={moveType} 
-                              size="small" 
+                              size="medium" 
                               color={moveType === 'cooperative' ? 'success' : 'error'}
-                              sx={{ fontSize: '0.65rem', height: 20 }}
+                              sx={{ fontSize: '0.875rem', height: 28 }}
                             />
                             {isSelected && (
-                              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold' }}>
-                                ✓ Selected
+                              <Typography variant="body1" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold', fontSize: '1.2rem' }}>
+                                ✓
                               </Typography>
                             )}
                           </CardContent>
@@ -581,39 +581,41 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                 </Box>
               </Box>
 
-              <Box sx={{ mb: 2, mt: 2 }}>
-                <Typography gutterBottom sx={{ mb: 1.5, fontWeight: 'medium' }}>
-                  Cooperation Start Round: {cooperationStart}
-                </Typography>
-                <Slider
-                  value={cooperationStart}
-                  onChange={(_, value) => setCooperationStart(value as number)}
-                  min={0}
-                  max={10}
-                  marks
-                  valueLabelDisplay="auto"
-                  sx={{ mt: 2 }}
-                />
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Typography gutterBottom sx={{ mb: 1.5, fontWeight: 'medium' }}>
-                  Number of Game Rounds
-                </Typography>
-                <TextField
-                  fullWidth
-                  type="number"
-                  value={numRounds}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value, 10);
-                    if (!isNaN(value) && value > 0) {
-                      setNumRounds(value);
-                    }
-                  }}
-                  inputProps={{ min: 1, max: 1000 }}
-                  helperText="Total number of rounds in the game. Phases will be calculated based on profile percentages."
-                  variant="outlined"
-                />
+              <Box sx={{ mb: 2, mt: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                <Box>
+                  <Typography gutterBottom sx={{ mb: 1, fontWeight: 'medium', fontSize: '1rem' }}>
+                    Cooperation Start Round: {cooperationStart}
+                  </Typography>
+                  <Slider
+                    value={cooperationStart}
+                    onChange={(_, value) => setCooperationStart(value as number)}
+                    min={0}
+                    max={10}
+                    marks
+                    valueLabelDisplay="auto"
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+                <Box>
+                  <Typography gutterBottom sx={{ mb: 1, fontWeight: 'medium', fontSize: '1rem' }}>
+                    Number of Game Rounds
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    value={numRounds}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10);
+                      if (!isNaN(value) && value > 0) {
+                        setNumRounds(value);
+                      }
+                    }}
+                    inputProps={{ min: 1, max: 1000 }}
+                    helperText="Total rounds"
+                    variant="outlined"
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
               </Box>
             </CardContent>
           </Card>
@@ -622,20 +624,20 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         {/* Available Moves */}
         <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
                 Select Available Moves
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Select at least 2 moves for the game. {userCountry && computerCountry && (
-                  <span>{availableMoves.length} moves available for {userCountry.name} vs {computerCountry.name}</span>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: 'block', fontSize: '1rem' }}>
+                Select at least 2 moves. {userCountry && computerCountry && (
+                  <span>{availableMoves.length} moves available</span>
                 )}
               </Typography>
               <Box sx={{ 
                 display: 'grid', 
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(5, 1fr)' },
                 gap: 1.5,
-                mb: 2
+                mb: 1.5
               }}>
                 {defaultMoves.map((move) => {
                   const isAvailable = availableMoves.includes(move.name);
@@ -664,24 +666,24 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                         })
                       }}
                     >
-                      <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                        <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 1 }}>
+                      <CardContent sx={{ py: 1.5, px: 1, '&:last-child': { pb: 1.5 } }}>
+                        <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', mb: 0.5, display: 'block', fontSize: '0.9rem' }}>
                           {move.name.replace('_', ' ').toUpperCase()}
                         </Typography>
                         <Chip 
                           label={moveType} 
-                          size="small" 
+                          size="medium" 
                           color={moveType === 'cooperative' ? 'success' : 'error'}
-                          sx={{ fontSize: '0.7rem', mb: 0.5 }}
+                          sx={{ fontSize: '0.875rem', height: 28, mb: 0.5 }}
                         />
                         {isSelected && (
-                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold' }}>
-                            ✓ Selected
+                          <Typography variant="body1" sx={{ display: 'block', mt: 0.5, fontWeight: 'bold', fontSize: '1.2rem' }}>
+                            ✓
                           </Typography>
                         )}
                         {!isAvailable && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontSize: '0.65rem' }}>
-                            Not available
+                          <Typography variant="body2" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontSize: '0.875rem' }}>
+                            N/A
                           </Typography>
                         )}
                       </CardContent>
@@ -689,8 +691,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                   );
                 })}
               </Box>
-              <Typography variant="caption" color={selectedMoves.length < 2 ? 'error' : 'text.secondary'}>
-                {selectedMoves.length} of {availableMoves.length} moves selected (minimum 2 required)
+              <Typography variant="body1" color={selectedMoves.length < 2 ? 'error' : 'text.secondary'} sx={{ fontSize: '1rem', fontWeight: selectedMoves.length < 2 ? 'bold' : 'normal' }}>
+                {selectedMoves.length} of {availableMoves.length} moves selected (min 2)
               </Typography>
             </CardContent>
           </Card>
@@ -703,27 +705,27 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               border: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? '2px solid #ff9800' : '1px solid rgba(0, 0, 0, 0.12)',
               bgcolor: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'rgba(255, 152, 0, 0.05)' : 'inherit'
             }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
                   Move Probabilities (Mixed Strategy)
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Set the probability for each selected move. Probabilities will be automatically normalized to sum to 100%.
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, display: 'block', fontSize: '1rem' }}>
+                  Set probabilities for each move (must sum to 100%).
                 </Typography>
                 {Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 && (
-                  <Box sx={{ mb: 2, p: 2, bgcolor: 'warning.light', borderRadius: 1, border: '1px solid #ff9800' }}>
-                    <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 'bold' }}>
-                      ⚠️ Warning: Total probability is not 100%. Please adjust the probabilities to sum to exactly 100% before starting the game.
+                  <Box sx={{ mb: 1.5, p: 1.5, bgcolor: 'warning.light', borderRadius: 1, border: '1px solid #ff9800' }}>
+                    <Typography variant="body1" color="warning.dark" sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                      ⚠️ Total must equal 100%
                     </Typography>
                   </Box>
                 )}
                 {selectedMoves.map((moveName) => (
                   <Box key={moveName} sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="subtitle1">
+                      <Typography variant="body1" sx={{ fontSize: '1rem' }}>
                         {moveName.replace('_', ' ').toUpperCase()}
                       </Typography>
-                      <Typography variant="body2" color="primary">
+                      <Typography variant="body1" color="primary" sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
                         {(moveProbabilities[moveName] * 100).toFixed(1)}%
                       </Typography>
                     </Box>
@@ -735,20 +737,21 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
                       step={0.01}
                       valueLabelDisplay="auto"
                       valueLabelFormat={(value) => `${(value * 100).toFixed(1)}%`}
+                      sx={{ mt: 1 }}
                     />
                   </Box>
                 ))}
                 <Box sx={{ 
                   mt: 2, 
-                  p: 2, 
+                  p: 1.5, 
                   bgcolor: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'warning.light' : 'grey.100', 
                   borderRadius: 1,
                   border: Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? '1px solid #ff9800' : 'none'
                 }}>
-                  <Typography variant="body2" color={Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'warning.dark' : 'text.secondary'}>
-                    Total Probability: {(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) * 100).toFixed(1)}%
+                  <Typography variant="body1" color={Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 ? 'warning.dark' : 'text.secondary'} sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                    Total: {(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) * 100).toFixed(1)}%
                     {Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01 && (
-                      <span style={{ color: '#d32f2f', fontWeight: 'bold' }}> ❌ Must equal 100%</span>
+                      <span style={{ color: '#d32f2f', fontWeight: 'bold' }}> ❌</span>
                     )}
                   </Typography>
                 </Box>
@@ -758,7 +761,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
         )}
 
         {/* Start Game Button */}
-        <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' }, display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' }, display: 'flex', justifyContent: 'center', mt: 2, flexShrink: 0 }}>
           <Button
             variant="contained"
             size="large"
@@ -771,7 +774,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onGameStart }) => {
               selectedMoves.length < 2 || 
               (strategy === 'mixed' && Math.abs(Object.values(moveProbabilities).reduce((sum, prob) => sum + prob, 0) - 1) > 0.01)
             }
-            sx={{ px: 4, py: 1.5 }}
+            sx={{ px: 4, py: 1.5, fontSize: '1.25rem', fontWeight: 'bold' }}
           >
             🚀 Start Trade War Game
           </Button>

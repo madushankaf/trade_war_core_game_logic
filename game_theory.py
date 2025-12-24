@@ -4,7 +4,7 @@ import time
 from game_moves import GameMoves
 import nashpy as nash
 from scipy.optimize import linprog
-from game_logger import get_game_logger
+from game_logger import get_game_logger, get_noop_game_logger
 import random
 
 # Phase boundaries (deprecated - now calculated from percentages)
@@ -921,7 +921,7 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
 
     return user_move, computer_move
 
-def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float = 0.5) -> dict:
+def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float = 0.5, enable_logging: bool = True) -> dict:
     """
     Play a complete game and return the moves history and dominant strategies.
     
@@ -930,6 +930,7 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
         socketio: Optional Flask-SocketIO instance for real-time updates
         game_id: Optional game ID for WebSocket room targeting
         round_delay: Delay in seconds between rounds (default: 0.5s)
+        enable_logging: Whether to enable game logging (default: True). Set to False for simulations.
     """
 
     computer_profile = game['computer_profile']
@@ -943,9 +944,13 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
     final_user_payoff = 0
     final_computer_payoff = 0
     
-    # Initialize game logger
-    logger = get_game_logger()
-    session_id = logger.start_game_session(game_id or "unknown_game", game)
+    # Initialize game logger (use no-op logger if logging is disabled)
+    if enable_logging:
+        logger = get_game_logger()
+        session_id = logger.start_game_session(game_id or "unknown_game", game)
+    else:
+        logger = get_noop_game_logger()
+        session_id = logger.start_game_session(game_id or "unknown_game", game)
     
     # Store num_rounds in game state for use in other functions
     game['num_rounds'] = num_rounds

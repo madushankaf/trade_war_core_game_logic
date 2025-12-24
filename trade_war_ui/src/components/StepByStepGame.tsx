@@ -264,26 +264,26 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
   const steps = ['Select Your Country', 'Select Opponent & Profile', 'Play Game'];
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 3 }, pb: 4 }}>
+    <Box sx={{ width: '100%', mx: 'auto', p: { xs: 2, sm: 3 }, pb: 2, height: 'calc(100vh - 40px)', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
       {onBackToSetup && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="outlined" onClick={onBackToSetup}>
+        <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+          <Button variant="outlined" size="large" onClick={onBackToSetup} sx={{ fontSize: '1rem', py: 1, px: 2 }}>
             ← Back to Setup
           </Button>
         </Box>
       )}
       
-      <Typography variant="h4" gutterBottom align="center" sx={{ mb: 4 }}>
+      <Typography variant="h4" gutterBottom align="center" sx={{ mb: 2, fontSize: '2rem', fontWeight: 'bold', flexShrink: 0 }}>
         🎮 Step-by-Step Trade War Game
       </Typography>
 
       {/* Stepper */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
+      <Card sx={{ mb: 2, flexShrink: 0 }}>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Stepper activeStep={activeStep} alternativeLabel>
             {steps.map((label) => (
               <Step key={label}>
-                <StepLabel>{label}</StepLabel>
+                <StepLabel sx={{ '& .MuiStepLabel-label': { fontSize: '1.1rem' } }}>{label}</StepLabel>
               </Step>
             ))}
           </Stepper>
@@ -292,15 +292,17 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
 
       {/* Step 0: Select Your Country */}
       {activeStep === 0 && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+        <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 'bold', fontSize: '1.5rem' }}>
               Step 1: Select Your Country
             </Typography>
             <Box sx={{ 
               display: 'grid', 
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
-              gap: 2
+              gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(5, 1fr)' },
+              gap: 1.5,
+              flex: 1,
+              overflow: 'auto'
             }}>
               {countries.map((country) => {
                 const isSelected = userCountry?.code === country.code;
@@ -321,16 +323,16 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                       }
                     }}
                   >
-                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                      <Typography variant="h4" sx={{ mb: 1 }}>
+                    <CardContent sx={{ textAlign: 'center', py: 1.5, px: 1, '&:last-child': { pb: 1.5 } }}>
+                      <Typography variant="h3" sx={{ mb: 1, fontSize: '2.5rem' }}>
                         {country.flag}
                       </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                      <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal', fontSize: '1rem', lineHeight: 1.3 }}>
                         {country.name}
                       </Typography>
                       {isSelected && (
-                        <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
-                          ✓ Selected
+                        <Typography variant="body1" color="primary" sx={{ display: 'block', mt: 0.5, fontSize: '1.2rem', fontWeight: 'bold' }}>
+                          ✓
                         </Typography>
                       )}
                     </CardContent>
@@ -344,16 +346,16 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
 
       {/* Step 1: Select Opponent Country and Profile */}
       {activeStep === 1 && (
-        <Box>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
+          <Card sx={{ mb: 2 }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
                 Step 2: Select Opponent Country
               </Typography>
               <Box sx={{ 
                 display: 'grid', 
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
-                gap: 2
+                gridTemplateColumns: { xs: 'repeat(4, 1fr)', sm: 'repeat(5, 1fr)', md: 'repeat(6, 1fr)' },
+                gap: 1
               }}>
                 {countries
                   .filter(country => !userCountry || country.code !== userCountry.code)
@@ -376,16 +378,16 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                           }
                         }}
                       >
-                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                          <Typography variant="h4" sx={{ mb: 1 }}>
+                        <CardContent sx={{ textAlign: 'center', py: 1, px: 0.5, '&:last-child': { pb: 1 } }}>
+                          <Typography variant="h4" sx={{ mb: 0.5, fontSize: '1.75rem' }}>
                             {country.flag}
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: isSelected ? 'bold' : 'normal' }}>
+                          <Typography variant="body2" sx={{ fontWeight: isSelected ? 'bold' : 'normal', fontSize: '0.875rem', lineHeight: 1.2 }}>
                             {country.name}
                           </Typography>
                           {isSelected && (
-                            <Typography variant="caption" color="secondary" sx={{ display: 'block', mt: 0.5 }}>
-                              ✓ Selected
+                            <Typography variant="caption" color="secondary" sx={{ display: 'block', mt: 0.25, fontSize: '0.875rem', fontWeight: 'bold' }}>
+                              ✓
                             </Typography>
                           )}
                         </CardContent>
@@ -397,144 +399,159 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
           </Card>
 
           {sameCountryError && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert severity="error" sx={{ mb: 0.75, fontSize: '0.7rem' }}>
               {sameCountryError}
             </Alert>
           )}
 
           {opponentCountry && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                  Step 3: Select Computer Behavior Profile
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Choose how the computer opponent will behave during the game.
-                </Typography>
-                <Box sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
-                  gap: 2,
-                  mb: 3
-                }}>
-                  {Object.entries(profiles).map(([profileName, profileData]) => {
-                    const isSelected = selectedProfile === profileName;
-                    return (
-                      <Card
-                        key={profileName}
-                        onClick={() => handleProfileSelect(profileName)}
-                        sx={{
-                          cursor: 'pointer',
-                          border: isSelected ? '3px solid' : '2px solid',
-                          borderColor: isSelected ? 'secondary.main' : 'divider',
-                          bgcolor: isSelected ? 'secondary.light' : 'background.paper',
-                          transition: 'all 0.2s ease-in-out',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            borderColor: 'secondary.main',
-                            boxShadow: 4
-                          }
-                        }}
-                      >
-                        <CardContent sx={{ py: 2 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography 
-                              variant="subtitle1" 
-                              sx={{ 
-                                fontWeight: isSelected ? 'bold' : 600,
-                                color: isSelected ? 'secondary.main' : 'text.primary'
-                              }}
-                            >
-                              {profileName}
-                            </Typography>
-                            {isSelected && (
-                              <Box
-                                sx={{
-                                  bgcolor: 'secondary.main',
-                                  color: 'white',
-                                  borderRadius: '50%',
-                                  width: 24,
-                                  height: 24,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '0.875rem',
-                                  fontWeight: 'bold'
+            <>
+              <Card sx={{ mb: 2 }}>
+                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                  <Typography variant="h6" gutterBottom sx={{ mb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
+                    Step 3: Select Computer Behavior Profile
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, display: 'block', fontSize: '0.875rem' }}>
+                    Choose how the computer opponent will behave during the game.
+                  </Typography>
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', lg: 'repeat(4, 1fr)' },
+                    gap: 1
+                  }}>
+                    {Object.entries(profiles).map(([profileName, profileData]) => {
+                      const isSelected = selectedProfile === profileName;
+                      return (
+                        <Card
+                          key={profileName}
+                          onClick={() => {
+                            console.log('Profile clicked:', profileName);
+                            handleProfileSelect(profileName);
+                          }}
+                          sx={{
+                            cursor: 'pointer',
+                            border: isSelected ? '3px solid' : '2px solid',
+                            borderColor: isSelected ? 'secondary.main' : 'divider',
+                            bgcolor: isSelected ? 'secondary.light' : 'background.paper',
+                            transition: 'all 0.2s ease-in-out',
+                            minHeight: 90,
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              borderColor: 'secondary.main',
+                              boxShadow: 3
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ py: 1, px: 1, '&:last-child': { pb: 1 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontWeight: isSelected ? 'bold' : 600,
+                                  color: isSelected ? 'secondary.main' : 'text.primary',
+                                  fontSize: '0.875rem'
                                 }}
                               >
-                                ✓
-                              </Box>
-                            )}
-                          </Box>
-                          <Typography 
-                            variant="body2" 
-                            color="text.secondary" 
-                            sx={{ fontSize: '0.875rem', lineHeight: 1.5 }}
-                          >
-                            {profileData.description}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-                  <Button variant="outlined" onClick={() => setActiveStep(0)}>
-                    ← Back
-                  </Button>
-                  <Button
-                    variant="contained"
-                    onClick={handleStartGame}
-                    disabled={!opponentCountry || !selectedProfile}
-                    size="large"
-                  >
-                    Start Game →
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
+                                {profileName}
+                              </Typography>
+                              {isSelected && (
+                                <Box
+                                  sx={{
+                                    bgcolor: 'secondary.main',
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    width: 20,
+                                    height: 20,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  ✓
+                                </Box>
+                              )}
+                            </Box>
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary" 
+                              sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}
+                            >
+                              {profileData.description || 'No description available'}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </Box>
+                </CardContent>
+              </Card>
+              
+              {/* Buttons in separate card at bottom to ensure visibility */}
+              <Card>
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                    <Button variant="outlined" size="large" onClick={() => setActiveStep(0)} sx={{ fontSize: '1.1rem', py: 1.5, px: 3 }}>
+                      ← Back
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleStartGame}
+                      disabled={!opponentCountry || !selectedProfile || loading}
+                      size="large"
+                      sx={{ fontSize: '1.1rem', py: 1.5, px: 3 }}
+                    >
+                      {loading ? 'Starting...' : 'Start Game →'}
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </>
           )}
         </Box>
       )}
 
       {/* Step 2: Play Game Step by Step */}
       {activeStep === 2 && userCountry && opponentCountry && selectedProfile && (
-        <Box>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
           {/* Current Winner Display - Prominent at Top */}
           {gameHistory.length > 0 && (
             <Card sx={{ 
-              mb: 3, 
+              mb: 0.75, 
               bgcolor: runningTotals.user_total > runningTotals.computer_total 
                 ? 'success.light' 
                 : runningTotals.computer_total > runningTotals.user_total 
                 ? 'error.light' 
                 : 'warning.light',
-              border: '3px solid',
+              border: '2px solid',
               borderColor: runningTotals.user_total > runningTotals.computer_total 
                 ? 'success.main' 
                 : runningTotals.computer_total > runningTotals.user_total 
                 ? 'error.main' 
                 : 'warning.main',
-              boxShadow: 6
+              boxShadow: 3,
+              flexShrink: 0
             }}>
-              <CardContent>
+              <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>
                     {runningTotals.user_total > runningTotals.computer_total 
                       ? '🎉 You Are Winning! 🎉' 
                       : runningTotals.computer_total > runningTotals.user_total 
                       ? '⚠️ Opponent Is Winning' 
                       : '🤝 It\'s a Tie!'}
                   </Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 2, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h6" color="text.secondary" gutterBottom>
+                      <Typography variant="caption" color="text.secondary" gutterBottom sx={{ fontSize: '0.65rem' }}>
                         Your Score
                       </Typography>
                       <Typography 
-                        variant="h3" 
+                        variant="h5" 
                         sx={{ 
                           fontWeight: 'bold',
+                          fontSize: '1.1rem',
                           color: runningTotals.user_total > runningTotals.computer_total ? 'success.main' : 'text.primary'
                         }}
                       >
@@ -542,18 +559,19 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                       </Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center', alignSelf: 'center' }}>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.secondary', fontSize: '0.8rem' }}>
                         VS
                       </Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h6" color="text.secondary" gutterBottom>
+                      <Typography variant="caption" color="text.secondary" gutterBottom sx={{ fontSize: '0.65rem' }}>
                         Opponent Score
                       </Typography>
                       <Typography 
-                        variant="h3" 
+                        variant="h5" 
                         sx={{ 
                           fontWeight: 'bold',
+                          fontSize: '1.1rem',
                           color: runningTotals.computer_total > runningTotals.user_total ? 'error.main' : 'text.primary'
                         }}
                       >
@@ -561,7 +579,7 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                       </Typography>
                     </Box>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.65rem' }}>
                     Difference: {Math.abs(runningTotals.user_total - runningTotals.computer_total).toFixed(2)} points
                   </Typography>
                 </Box>
@@ -570,44 +588,49 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
           )}
 
           {/* Game Info Header */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Card sx={{ mb: 0.75, flexShrink: 0 }}>
+            <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
                 <Box>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="subtitle1" gutterBottom sx={{ mb: 0.5, fontWeight: 'bold', fontSize: '0.8rem' }}>
                     Game Information
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                     <Chip 
                       label={`You: ${userCountry.flag} ${userCountry.name}`} 
                       color="primary" 
-                      sx={{ fontSize: '0.9rem', py: 2 }}
+                      size="small"
+                      sx={{ fontSize: '0.65rem', height: 20 }}
                     />
                     <Chip 
                       label={`Opponent: ${opponentCountry.flag} ${opponentCountry.name}`} 
                       color="secondary" 
-                      sx={{ fontSize: '0.9rem', py: 2 }}
+                      size="small"
+                      sx={{ fontSize: '0.65rem', height: 20 }}
                     />
                     <Chip 
                       label={`Profile: ${selectedProfile}`} 
                       variant="outlined"
-                      sx={{ fontSize: '0.9rem', py: 2 }}
+                      size="small"
+                      sx={{ fontSize: '0.65rem', height: 20 }}
                     />
                     <Chip 
                       label={`Round: ${currentRound} / ${totalRounds}`} 
                       color="info"
-                      sx={{ fontSize: '0.9rem', py: 2 }}
+                      size="small"
+                      sx={{ fontSize: '0.65rem', height: 20 }}
                     />
                     {gameStatus === 'completed' && (
                       <Chip 
                         label="Game Completed" 
                         color="success"
-                        sx={{ fontSize: '0.9rem', py: 2 }}
+                        size="small"
+                        sx={{ fontSize: '0.65rem', height: 20 }}
                       />
                     )}
                   </Box>
                 </Box>
-                <Button variant="outlined" onClick={handleResetGame}>
+                <Button variant="outlined" size="small" onClick={handleResetGame} sx={{ fontSize: '0.75rem', py: 0.25 }}>
                   Reset Game
                 </Button>
               </Box>
@@ -616,16 +639,16 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-              {error}
+            <Alert severity="error" sx={{ mb: 0.75, fontSize: '0.7rem', flexShrink: 0 }} onClose={() => setError(null)}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>{error}</Typography>
             </Alert>
           )}
 
           {/* Loading Indicator */}
           {loading && (
-            <Box sx={{ mb: 3 }}>
-              <LinearProgress />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+            <Box sx={{ mb: 0.75, flexShrink: 0 }}>
+              <LinearProgress sx={{ height: 4 }} />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, textAlign: 'center', display: 'block', fontSize: '0.65rem' }}>
                 Processing round...
               </Typography>
             </Box>
@@ -633,49 +656,49 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
 
           {/* Last Round Played - Card Game Style */}
           {gameHistory.length > 0 && (
-            <Card sx={{ mb: 3, bgcolor: 'background.paper', border: '2px solid', borderColor: 'divider' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ textAlign: 'center', mb: 3 }}>
+            <Card sx={{ mb: 0.75, bgcolor: 'background.paper', border: '2px solid', borderColor: 'divider', flexShrink: 0 }}>
+              <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ textAlign: 'center', mb: 0.5, fontWeight: 'bold', fontSize: '0.8rem' }}>
                   Last Round Played
                 </Typography>
                 <Box sx={{ 
                   display: 'flex', 
                   justifyContent: 'center', 
                   alignItems: 'center',
-                  gap: 4,
+                  gap: 2,
                   flexWrap: 'wrap'
                 }}>
                   {/* Your Last Move Card */}
                   <Card sx={{
-                    minWidth: 180,
-                    maxWidth: 220,
+                    minWidth: 140,
+                    maxWidth: 160,
                     bgcolor: 'primary.light',
-                    border: '3px solid',
+                    border: '2px solid',
                     borderColor: 'primary.main',
-                    boxShadow: 4,
+                    boxShadow: 3,
                     transform: 'rotate(-2deg)',
                     transition: 'transform 0.3s',
                     '&:hover': {
                       transform: 'rotate(-2deg) scale(1.05)',
                     }
                   }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    <CardContent sx={{ textAlign: 'center', py: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.6rem' }}>
                         YOUR MOVE
                       </Typography>
-                      <Typography variant="h3" sx={{ mb: 1 }}>
+                      <Typography variant="h4" sx={{ mb: 0.5, fontSize: '1.5rem' }}>
                         {getMoveIcon(getMoveType(gameHistory[gameHistory.length - 1].userMove))}
                       </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '0.75rem' }}>
                         {gameHistory[gameHistory.length - 1].userMove.replace('_', ' ').toUpperCase()}
                       </Typography>
                       <Chip 
                         label={getMoveType(gameHistory[gameHistory.length - 1].userMove)} 
                         size="small"
                         color={getMoveType(gameHistory[gameHistory.length - 1].userMove) === 'cooperative' ? 'success' : 'error'}
-                        sx={{ mb: 1 }}
+                        sx={{ mb: 0.5, fontSize: '0.6rem', height: 18 }}
                       />
-                      <Typography variant="h6" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                      <Typography variant="body1" color="primary.main" sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>
                         +{gameHistory[gameHistory.length - 1].userPayoff.toFixed(2)}
                       </Typography>
                     </CardContent>
@@ -683,45 +706,45 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
 
                   {/* VS Divider */}
                   <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.secondary', fontSize: '1rem' }}>
                       VS
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                       Round {gameHistory[gameHistory.length - 1].round}
                     </Typography>
                   </Box>
 
                   {/* Opponent's Last Move Card */}
                   <Card sx={{
-                    minWidth: 180,
-                    maxWidth: 220,
+                    minWidth: 140,
+                    maxWidth: 160,
                     bgcolor: 'secondary.light',
-                    border: '3px solid',
+                    border: '2px solid',
                     borderColor: 'secondary.main',
-                    boxShadow: 4,
+                    boxShadow: 3,
                     transform: 'rotate(2deg)',
                     transition: 'transform 0.3s',
                     '&:hover': {
                       transform: 'rotate(2deg) scale(1.05)',
                     }
                   }}>
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    <CardContent sx={{ textAlign: 'center', py: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.6rem' }}>
                         OPPONENT'S MOVE
                       </Typography>
-                      <Typography variant="h3" sx={{ mb: 1 }}>
+                      <Typography variant="h4" sx={{ mb: 0.5, fontSize: '1.5rem' }}>
                         {getMoveIcon(getMoveType(gameHistory[gameHistory.length - 1].computerMove))}
                       </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '0.75rem' }}>
                         {gameHistory[gameHistory.length - 1].computerMove.replace('_', ' ').toUpperCase()}
                       </Typography>
                       <Chip 
                         label={getMoveType(gameHistory[gameHistory.length - 1].computerMove)} 
                         size="small"
                         color={getMoveType(gameHistory[gameHistory.length - 1].computerMove) === 'cooperative' ? 'success' : 'error'}
-                        sx={{ mb: 1 }}
+                        sx={{ mb: 0.5, fontSize: '0.6rem', height: 18 }}
                       />
-                      <Typography variant="h6" color="secondary.main" sx={{ fontWeight: 'bold' }}>
+                      <Typography variant="body1" color="secondary.main" sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>
                         +{gameHistory[gameHistory.length - 1].computerPayoff.toFixed(2)}
                       </Typography>
                     </CardContent>
@@ -729,7 +752,7 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                 </Box>
                 
                 {/* Round Winner */}
-                <Box sx={{ textAlign: 'center', mt: 3 }}>
+                <Box sx={{ textAlign: 'center', mt: 1 }}>
                   <Chip 
                     label={
                       gameHistory[gameHistory.length - 1].roundWinner === 'user'
@@ -745,65 +768,34 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                         ? 'error'
                         : 'warning'
                     }
-                    sx={{ fontSize: '1rem', py: 1.5, px: 2 }}
+                    sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
                   />
                 </Box>
               </CardContent>
             </Card>
           )}
 
-          {/* Opponent's Last Move Display (Before User Selects) */}
-          {lastOpponentMove && gameStatus !== 'completed' && (
-            <Card sx={{ mb: 3, bgcolor: 'secondary.light', border: '2px dashed', borderColor: 'secondary.main' }}>
-              <CardContent>
-                <Typography variant="subtitle1" gutterBottom sx={{ textAlign: 'center', fontWeight: 'bold' }}>
-                  Opponent's Last Move
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mt: 2 }}>
-                  <Card sx={{
-                    bgcolor: 'secondary.main',
-                    color: 'white',
-                    minWidth: 150,
-                    boxShadow: 3
-                  }}>
-                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                      <Typography variant="h4" sx={{ mb: 1 }}>
-                        {getMoveIcon(getMoveType(lastOpponentMove))}
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                        {lastOpponentMove.replace('_', ' ').toUpperCase()}
-                      </Typography>
-                      <Chip 
-                        label={getMoveType(lastOpponentMove)} 
-                        size="small"
-                        sx={{ 
-                          mt: 1,
-                          bgcolor: 'white',
-                          color: getMoveType(lastOpponentMove) === 'cooperative' ? 'success.main' : 'error.main'
-                        }}
-                      />
-                    </CardContent>
-                  </Card>
-                </Box>
-              </CardContent>
-            </Card>
-          )}
-
-
-          {/* Current Round - Select Move - Card Game Style */}
+          {/* Current Round - Select Move - Card Game Style - ALWAYS SHOW WHEN GAME IS IN PROGRESS */}
           {gameStatus !== 'completed' && (
-            <Card sx={{ mb: 3, bgcolor: 'background.paper', border: '2px solid', borderColor: 'primary.main' }}>
-              <CardContent>
-                <Typography variant="h5" gutterBottom sx={{ mb: 3, textAlign: 'center', fontWeight: 'bold' }}>
-                  Round {currentRound}: Select Your Move
+            <Card sx={{ 
+              mb: 2, 
+              bgcolor: 'primary.light', 
+              border: '3px solid', 
+              borderColor: 'primary.main',
+              boxShadow: 6,
+              flexShrink: 0
+            }}>
+              <CardContent sx={{ p: 2 }}>
+                <Typography variant="h4" gutterBottom sx={{ mb: 1.5, textAlign: 'center', fontWeight: 'bold', fontSize: '2rem', color: 'primary.dark' }}>
+                  Round {gameHistory.length + 1}: Select Your Move
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 2, textAlign: 'center', fontSize: '1.1rem', fontWeight: 500 }}>
                   Choose your move card to play against the opponent
                 </Typography>
               <Box sx={{ 
                 display: 'grid', 
                 gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
-                gap: 3
+                gap: 1.5
               }}>
                 {defaultMoves
                   .filter(move => availableMoves.includes(move.name))
@@ -812,39 +804,46 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                     return (
                       <Card
                         key={move.name}
-                        onClick={() => !loading && handleMoveSelect(move.name)}
+                        onClick={() => {
+                          if (!loading) {
+                            console.log('Move selected:', move.name);
+                            handleMoveSelect(move.name);
+                          }
+                        }}
                         sx={{
                           cursor: loading ? 'not-allowed' : 'pointer',
-                          border: '3px solid',
+                          border: '2px solid',
                           borderColor: moveType === 'cooperative' ? 'success.main' : 'error.main',
                           bgcolor: loading ? 'action.disabledBackground' : (moveType === 'cooperative' ? 'success.light' : 'error.light'),
                           opacity: loading ? 0.6 : 1,
                           transition: 'all 0.3s ease-in-out',
                           transform: 'rotate(0deg)',
                           boxShadow: 2,
-                          minHeight: 200,
+                          minHeight: 150,
                           display: 'flex',
                           flexDirection: 'column',
+                          position: 'relative',
+                          zIndex: 1,
                           '&:hover': {
                             transform: loading ? 'none' : 'translateY(-8px) rotate(2deg)',
                             boxShadow: loading ? 2 : 8,
-                            borderWidth: loading ? '3px' : '4px',
-                            zIndex: 1
+                            borderWidth: loading ? '2px' : '4px',
+                            zIndex: 10
                           }
                         }}
                       >
                         <CardContent sx={{ 
                           textAlign: 'center', 
-                          py: 3,
+                          py: 1.5,
                           flexGrow: 1,
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'center'
                         }}>
-                          <Typography variant="h2" sx={{ mb: 2 }}>
+                          <Typography variant="h2" sx={{ mb: 1, fontSize: '2.5rem' }}>
                             {getMoveIcon(moveType)}
                           </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, lineHeight: 1.2 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, lineHeight: 1.2, fontSize: '1rem' }}>
                             {move.name.replace('_', ' ').toUpperCase()}
                           </Typography>
                           <Chip 
@@ -852,12 +851,13 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                             size="small" 
                             color={getMoveColor(moveType) as any}
                             sx={{ 
-                              fontSize: '0.75rem',
+                              fontSize: '0.875rem',
                               fontWeight: 'bold',
-                              mb: 1
+                              mb: 1,
+                              height: 28
                             }}
                           />
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontSize: '0.875rem' }}>
                             Click to play
                           </Typography>
                         </CardContent>
@@ -871,12 +871,12 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
 
           {/* Game History - Card Game Style */}
           {gameHistory.length > 1 && (
-            <Card sx={{ mt: 3 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ mb: 3, textAlign: 'center' }}>
+            <Card sx={{ mt: 0.75, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 0.75, '&:last-child': { pb: 0.75 } }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 0.5, textAlign: 'center', fontSize: '0.8rem' }}>
                   Game History
                 </Typography>
-                <Box sx={{ maxHeight: 500, overflow: 'auto', pr: 1 }}>
+                <Box sx={{ flex: 1, overflow: 'auto', pr: 0.5 }}>
                   {gameHistory.slice().reverse().slice(1).map((round, index) => {
                     const userMoveType = getMoveType(round.userMove);
                     const computerMoveType = getMoveType(round.computerMove);
@@ -890,26 +890,26 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                       <Box 
                         key={gameHistory.length - index - 1}
                         sx={{ 
-                          mb: 3,
-                          p: 2,
+                          mb: 1,
+                          p: 0.75,
                           bgcolor: 'background.default',
-                          borderRadius: 2,
+                          borderRadius: 1,
                           border: '1px solid',
                           borderColor: 'divider'
                         }}
                       >
-                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 0.75 }}>
                           <Chip 
                             label={`Round ${round.round}`}
                             color="info"
-                            sx={{ fontSize: '0.9rem', fontWeight: 'bold' }}
+                            sx={{ fontSize: '0.7rem', fontWeight: 'bold', height: 20 }}
                           />
                           {round.phase && (
                             <Chip 
                               label={round.phase}
                               variant="outlined"
                               size="small"
-                              sx={{ ml: 1 }}
+                              sx={{ ml: 0.5, fontSize: '0.65rem', height: 18 }}
                             />
                           )}
                         </Box>
@@ -918,69 +918,69 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                           display: 'flex', 
                           justifyContent: 'center', 
                           alignItems: 'center',
-                          gap: 3,
+                          gap: 1.5,
                           flexWrap: 'wrap',
-                          mb: 2
+                          mb: 0.75
                         }}>
                           {/* Your Move Card */}
                           <Card sx={{
-                            minWidth: 140,
-                            maxWidth: 160,
+                            minWidth: 100,
+                            maxWidth: 120,
                             bgcolor: 'primary.light',
                             border: '2px solid',
                             borderColor: 'primary.main',
-                            boxShadow: 2,
+                            boxShadow: 1,
                             transform: 'rotate(-1deg)'
                           }}>
-                            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3, fontSize: '0.55rem' }}>
                                 YOU
                               </Typography>
-                              <Typography variant="h5" sx={{ mb: 0.5 }}>
+                              <Typography variant="h6" sx={{ mb: 0.3, fontSize: '1rem' }}>
                                 {getMoveIcon(userMoveType)}
                               </Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '0.75rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', mb: 0.3, fontSize: '0.65rem' }}>
                                 {round.userMove.replace('_', ' ').toUpperCase()}
                               </Typography>
                               <Chip 
                                 label={`+${round.userPayoff.toFixed(2)}`} 
                                 color="primary" 
                                 size="small"
-                                sx={{ fontSize: '0.7rem' }}
+                                sx={{ fontSize: '0.6rem', height: 16 }}
                               />
                             </CardContent>
                           </Card>
 
                           {/* VS */}
-                          <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary', fontSize: '0.75rem' }}>
                             VS
                           </Typography>
 
                           {/* Opponent Move Card */}
                           <Card sx={{
-                            minWidth: 140,
-                            maxWidth: 160,
+                            minWidth: 100,
+                            maxWidth: 120,
                             bgcolor: 'secondary.light',
                             border: '2px solid',
                             borderColor: 'secondary.main',
-                            boxShadow: 2,
+                            boxShadow: 1,
                             transform: 'rotate(1deg)'
                           }}>
-                            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3, fontSize: '0.55rem' }}>
                                 OPPONENT
                               </Typography>
-                              <Typography variant="h5" sx={{ mb: 0.5 }}>
+                              <Typography variant="h6" sx={{ mb: 0.3, fontSize: '1rem' }}>
                                 {getMoveIcon(computerMoveType)}
                               </Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '0.75rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', mb: 0.3, fontSize: '0.65rem' }}>
                                 {round.computerMove.replace('_', ' ').toUpperCase()}
                               </Typography>
                               <Chip 
                                 label={`+${round.computerPayoff.toFixed(2)}`} 
                                 color="secondary" 
                                 size="small"
-                                sx={{ fontSize: '0.7rem' }}
+                                sx={{ fontSize: '0.6rem', height: 16 }}
                               />
                             </CardContent>
                           </Card>
@@ -992,6 +992,7 @@ const StepByStepGame: React.FC<StepByStepGameProps> = ({ onBackToSetup }) => {
                             label={roundWinner === 'Tie' ? '🤝 Tie' : `${roundWinner === 'You' ? '🎉' : ''} ${roundWinner} Won`}
                             color={roundWinner === 'You' ? 'success' : roundWinner === 'Opponent' ? 'error' : 'warning'}
                             size="small"
+                            sx={{ fontSize: '0.7rem', height: 20 }}
                           />
                         </Box>
                       </Box>

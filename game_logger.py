@@ -541,12 +541,37 @@ class GameLogger:
 # Global logger instance
 _game_logger = None
 
+
+class NoOpGameLogger:
+    """
+    No-op logger that implements the same interface as GameLogger but does nothing.
+    Useful for disabling logging in simulations to improve performance and reduce log file size.
+    """
+    def start_game_session(self, game_id: str, game_config: Dict[str, Any]) -> str:
+        """No-op: returns a dummy session ID"""
+        return f"noop_session_{game_id}"
+    
+    def log_move(self, *args, **kwargs):
+        """No-op: does nothing"""
+        pass
+    
+    def end_game_session(self, *args, **kwargs):
+        """No-op: does nothing"""
+        pass
+
+
 def get_game_logger() -> GameLogger:
     """Get the global game logger instance"""
     global _game_logger
     if _game_logger is None:
         _game_logger = GameLogger()
     return _game_logger
+
+
+def get_noop_game_logger() -> NoOpGameLogger:
+    """Get a no-op logger instance that does nothing (useful for simulations)"""
+    return NoOpGameLogger()
+
 
 def initialize_game_logger(log_directory: str = "game_logs", enable_console_logging: bool = True) -> GameLogger:
     """Initialize the global game logger with custom settings"""

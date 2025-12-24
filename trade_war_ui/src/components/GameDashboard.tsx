@@ -248,60 +248,69 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ p: 2, width: '100%', mx: 'auto', height: 'calc(100vh - 40px)', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexShrink: 0 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontSize: '2rem', mb: 0, fontWeight: 'bold' }}>
           🎮 Trade War Game
         </Typography>
-        <Button variant="outlined" onClick={onBackToSetup}>
+        <Button variant="outlined" size="large" onClick={onBackToSetup} sx={{ fontSize: '1rem', py: 1, px: 2 }}>
           ← Back to Setup
         </Button>
       </Box>
 
       {/* Game Controls */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
+      <Card sx={{ mb: 2, flexShrink: 0 }}>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Typography variant="h6">Game Controls</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>Game Controls</Typography>
             <Chip 
               label={`Round ${currentRound} / ${totalRounds}`} 
               color="primary" 
               variant="outlined"
+              sx={{ fontSize: '1.1rem', height: 36, px: 1 }}
             />
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <Button
               variant="contained"
+              size="large"
               startIcon={<PlayArrow />}
               onClick={handlePlayGame}
               disabled={loading || isPlaying}
+              sx={{ fontSize: '1.1rem', py: 1.5, px: 3 }}
             >
               {loading ? 'Playing...' : 'Play Full Game'}
             </Button>
             
             <Button
               variant="outlined"
+              size="large"
               startIcon={<Pause />}
               onClick={handlePauseGame}
               disabled={!isPlaying}
+              sx={{ fontSize: '1.1rem', py: 1.5, px: 3 }}
             >
               Pause
             </Button>
             
             <Button
               variant="outlined"
+              size="large"
               startIcon={<Stop />}
               onClick={handleStopGame}
+              sx={{ fontSize: '1.1rem', py: 1.5, px: 3 }}
             >
               Stop
             </Button>
             
             <Button
               variant="outlined"
+              size="large"
               startIcon={<Refresh />}
               onClick={handleStopGame}
+              sx={{ fontSize: '1.1rem', py: 1.5, px: 3 }}
             >
               Reset
             </Button>
@@ -309,8 +318,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
           {loading && (
             <Box sx={{ mt: 2 }}>
-              <LinearProgress />
-              <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+              <LinearProgress sx={{ height: 8 }} />
+              <Typography variant="body1" sx={{ mt: 1, display: 'block', fontSize: '1rem' }}>
                 Simulating trade war game...
               </Typography>
             </Box>
@@ -320,11 +329,11 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
       {/* Error Display */}
       {error && (
-        <Card sx={{ mb: 3, bgcolor: 'error.light' }}>
-          <CardContent>
+        <Card sx={{ mb: 2, bgcolor: 'error.light', flexShrink: 0 }}>
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Warning color="error" />
-              <Typography color="error">{error}</Typography>
+              <Warning color="error" sx={{ fontSize: '1.5rem' }} />
+              <Typography color="error" variant="body1" sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{error}</Typography>
             </Box>
           </CardContent>
         </Card>
@@ -332,9 +341,9 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
       {/* Round-by-Round Winner Step Function */}
       {stepData.length > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 2 }}>
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Typography variant="h6" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
               Round-by-Round Winner Step Function
             </Typography>
             <Box sx={{ height: 300, width: '100%' }}>
@@ -347,6 +356,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                     ticks={[0, 50, 100, 150, 200]}
                     label={{ value: 'Rounds', position: 'insideBottom', offset: -10 }}
                     stroke="#666"
+                    style={{ fontSize: '1rem' }}
                   />
                   <YAxis 
                     domain={[-0.1, 1.1]}
@@ -354,6 +364,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                     tickFormatter={(value) => value === 0 ? 'Me' : 'Opponent'}
                     label={{ value: 'Winner', angle: -90, position: 'insideLeft' }}
                     stroke="#666"
+                    style={{ fontSize: '1rem' }}
                   />
                   <Tooltip 
                     labelFormatter={(label) => `Round ${label}`}
@@ -365,11 +376,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                       backgroundColor: '#f8f9fa',
                       border: '1px solid #dee2e6',
                       borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      fontSize: '1rem'
                     }}
                   />
                   <Legend 
-                    wrapperStyle={{ paddingTop: '20px' }}
+                    wrapperStyle={{ paddingTop: '20px', fontSize: '1rem' }}
                     iconType="rect"
                   />
                   <Line
@@ -384,8 +396,8 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                 </LineChart>
               </ResponsiveContainer>
             </Box>
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
+            <Box sx={{ mt: 1.5, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '1rem' }}>
                 Step jumps show when the lead changes between players
               </Typography>
             </Box>
@@ -395,26 +407,26 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
       {/* Game Results */}
       {gameResult && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
+        <Card sx={{ mb: 2, flexShrink: 0 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
               🏆 Final Results
             </Typography>
             
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h4" color="primary">
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+              <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="h3" color="primary" sx={{ fontSize: '2.5rem', fontWeight: 'bold' }}>
                   {gameResult.final_user_payoff.toFixed(2)}
                 </Typography>
-                <Typography variant="subtitle1">Your Total Payoff</Typography>
+                <Typography variant="h6" sx={{ fontSize: '1.25rem', mt: 1 }}>Your Total Payoff</Typography>
                 <TrendingUp color="success" sx={{ fontSize: 40, mt: 1 }} />
               </Paper>
               
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h4" color="secondary">
+              <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="h3" color="secondary" sx={{ fontSize: '2.5rem', fontWeight: 'bold' }}>
                   {gameResult.final_computer_payoff.toFixed(2)}
                 </Typography>
-                <Typography variant="subtitle1">Opponent Total Payoff</Typography>
+                <Typography variant="h6" sx={{ fontSize: '1.25rem', mt: 1 }}>Opponent Total Payoff</Typography>
                 <TrendingDown color="error" sx={{ fontSize: 40, mt: 1 }} />
               </Paper>
             </Box>
@@ -437,7 +449,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                     : 'warning'
                 }
                 variant="filled"
-                sx={{ fontSize: '1.1rem', py: 1 }}
+                sx={{ fontSize: '1.25rem', py: 1.5, px: 2, height: 'auto' }}
               />
             </Box>
           </CardContent>
@@ -446,12 +458,12 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
       {/* Win Percentage Pie Chart */}
       {winStats && winStats.length > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom align="center">
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Typography variant="h6" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
               📊 Round Win Distribution
             </Typography>
-            <Box sx={{ height: 400, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Box sx={{ height: 350, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -476,11 +488,13 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                       `${((props.payload.percent || 0) * 100).toFixed(1)}% (${value} rounds)`,
                       name
                     ]}
+                    contentStyle={{ fontSize: '1rem' }}
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={36}
+                    height={50}
                     formatter={(value, entry: any) => `${value}: ${((entry.payload?.percent || 0) * 100).toFixed(1)}%`}
+                    wrapperStyle={{ fontSize: '1rem' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -491,35 +505,38 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
       {/* Move Count Bar Charts */}
       {moveCounts.user.length > 0 && moveCounts.computer.length > 0 && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mb: 2 }}>
           {/* User Move Counts */}
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom align="center">
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
                 📈 Your Move Distribution
               </Typography>
-              <Box sx={{ height: 350, width: '100%' }}>
+              <Box sx={{ height: 300, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={moveCounts.user}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="name" 
                       angle={-45}
                       textAnchor="end"
-                      height={80}
+                      height={100}
                       interval={0}
+                      style={{ fontSize: '1rem' }}
                     />
                     <YAxis 
                       label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                      style={{ fontSize: '1rem' }}
                     />
                     <Tooltip 
                       formatter={(value: number, name: string, props: any) => [
                         `${value} times (${props.payload.percentage}%)`,
                         'Usage'
                       ]}
+                      contentStyle={{ fontSize: '1rem' }}
                     />
                     <Bar dataKey="count" fill={BAR_COLORS.user} radius={[8, 8, 0, 0]} />
                   </BarChart>
@@ -530,32 +547,35 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
           {/* Computer Move Counts */}
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom align="center">
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
                 📈 Opponent Move Distribution
               </Typography>
-              <Box sx={{ height: 350, width: '100%' }}>
+              <Box sx={{ height: 300, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={moveCounts.computer}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="name" 
                       angle={-45}
                       textAnchor="end"
-                      height={80}
+                      height={100}
                       interval={0}
+                      style={{ fontSize: '1rem' }}
                     />
                     <YAxis 
                       label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                      style={{ fontSize: '1rem' }}
                     />
                     <Tooltip 
                       formatter={(value: number, name: string, props: any) => [
                         `${value} times (${props.payload.percentage}%)`,
                         'Usage'
                       ]}
+                      contentStyle={{ fontSize: '1rem' }}
                     />
                     <Bar dataKey="count" fill={BAR_COLORS.computer} radius={[8, 8, 0, 0]} />
                   </BarChart>
@@ -567,23 +587,23 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
       )}
 
       {/* Game Information */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, flex: 1, minHeight: 0 }}>
         {/* Available Moves */}
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
+        <Card sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
               Your Available Moves
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, overflow: 'auto' }}>
               {gameData.user_moves.map((move) => (
-                <Paper key={move.name} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="h4">{getMoveIcon(move)}</Typography>
+                <Paper key={move.name} sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Typography variant="h4" sx={{ fontSize: '2rem' }}>{getMoveIcon(move)}</Typography>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle1">
+                    <Typography variant="body1" sx={{ fontSize: '1.1rem', fontWeight: 'bold', display: 'block' }}>
                       {move.name.replace('_', ' ').toUpperCase()}
                     </Typography>
                     {gameData.user_strategy_settings.strategy === 'mixed' && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '1rem' }}>
                         Probability: {(move.probability * 100).toFixed(1)}%
                       </Typography>
                     )}
@@ -591,7 +611,7 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
                   <Chip 
                     label={move.type} 
                     color={getMoveColor(move) as any}
-                    size="small"
+                    sx={{ fontSize: '1rem', height: 32 }}
                   />
                 </Paper>
               ))}
@@ -600,36 +620,36 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
         </Card>
 
         {/* Strategy Information */}
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
+        <Card sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
               Strategy Configuration
             </Typography>
             
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Paper sx={{ p: 1.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '1rem', display: 'block', mb: 0.5 }}>
                   Strategy Type
                 </Typography>
-                <Typography variant="h6">
+                <Typography variant="h6" sx={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
                   {gameData.user_strategy_settings.strategy.replace('_', ' ').toUpperCase()}
                 </Typography>
               </Paper>
 
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
+              <Paper sx={{ p: 1.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '1rem', display: 'block', mb: 0.5 }}>
                   First Move
                 </Typography>
-                <Typography variant="h6">
+                <Typography variant="h6" sx={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
                   {gameData.user_strategy_settings.first_move?.replace('_', ' ').toUpperCase() || 'Random'}
                 </Typography>
               </Paper>
 
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
+              <Paper sx={{ p: 1.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '1rem', display: 'block', mb: 0.5 }}>
                   Cooperation Start
                 </Typography>
-                <Typography variant="h6">
+                <Typography variant="h6" sx={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
                   Round {gameData.user_strategy_settings.cooperation_start || 0}
                 </Typography>
               </Paper>
@@ -639,31 +659,31 @@ const GameDashboard: React.FC<GameDashboardProps> = ({ gameData, onBackToSetup }
 
         {/* Game History */}
         {gameHistory.length > 0 && (
-          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
+          <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' }, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 1.5, fontSize: '1.5rem' }}>
                   Recent Game History
                 </Typography>
                 
-                <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                <Box sx={{ flex: 1, overflow: 'auto' }}>
                   {gameHistory.slice(-10).map((round, index) => (
-                    <Paper key={index} sx={{ p: 2, mb: 1 }}>
+                    <Paper key={index} sx={{ p: 1.5, mb: 1 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle2">
+                        <Typography variant="body1" sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
                           Round {round.round}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                           <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption">You</Typography>
-                            <Typography variant="h6">{getMoveIcon(round.user_move)}</Typography>
-                            <Typography variant="caption">{round.user_payoff}</Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>You</Typography>
+                            <Typography variant="h5" sx={{ fontSize: '1.5rem' }}>{getMoveIcon(round.user_move)}</Typography>
+                            <Typography variant="body1" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>{round.user_payoff}</Typography>
                           </Box>
-                          <Typography variant="h4">⚔️</Typography>
+                          <Typography variant="h4" sx={{ fontSize: '2rem' }}>⚔️</Typography>
                           <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption">Opponent</Typography>
-                            <Typography variant="h6">{getMoveIcon(round.computer_move)}</Typography>
-                            <Typography variant="caption">{round.computer_payoff}</Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>Opponent</Typography>
+                            <Typography variant="h5" sx={{ fontSize: '1.5rem' }}>{getMoveIcon(round.computer_move)}</Typography>
+                            <Typography variant="body1" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>{round.computer_payoff}</Typography>
                           </Box>
                         </Box>
                       </Box>
