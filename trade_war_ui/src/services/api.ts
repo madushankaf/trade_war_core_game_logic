@@ -309,44 +309,128 @@ export const gameApi = {
 
   // Simulation methods
   /**
-   * Run a Monte Carlo simulation suite
+   * Run a Monte Carlo simulation suite with real-time updates via WebSocket
+   * Uses a Discrete Weibull mixture model (80% normal, 20% entrenched regimes)
    * @param baseGameConfig Base game configuration
    * @param userStrategies List of user strategies to test
    * @param computerProfileName Computer profile name
    * @param numSimulations Number of simulations per strategy (default: 5000)
-   * @param roundsMean Mean number of rounds (optional)
-   * @param roundsStd Standard deviation for rounds (optional)
-   * @param roundsMin Minimum rounds (optional, default: 50)
-   * @param roundsMax Maximum rounds (optional, default: 500)
+   * @param roundsMean Target mean number of rounds (optional, default: 15)
+   * @param roundsStd Deprecated - no longer used (replaced with Discrete Weibull model)
+   * @param roundsMin Minimum rounds (optional, default: 5)
+   * @param roundsMax Maximum rounds (optional, default: 30)
+   * @param onProgress Optional callback for progress updates
+   * @param onError Optional callback for errors
    */
-  runSimulationSuite: async (
+  runSimulationSuite: (
     baseGameConfig: any,
     userStrategies: string[],
     computerProfileName: string,
     numSimulations: number = 5000,
     roundsMean?: number,
     roundsStd?: number,
-    roundsMin: number = 50,
-    roundsMax: number = 500
+    roundsMin: number = 5,
+    roundsMax: number = 30,
+    onProgress?: (progress: any) => void,
+    onError?: (error: any) => void
   ): Promise<any> => {
-    try {
-      const requestData: any = {
-        base_game_config: baseGameConfig,
-        user_strategies: userStrategies,
-        computer_profile_name: computerProfileName,
-        num_simulations: numSimulations,
-        rounds_min: roundsMin,
-        rounds_max: roundsMax,
-      };
-      if (roundsMean !== undefined) requestData.rounds_mean = roundsMean;
-      if (roundsStd !== undefined) requestData.rounds_std = roundsStd;
+    return new Promise((resolve, reject) => {
+      try {
+        const requestData: any = {
+          base_game_config: baseGameConfig,
+          user_strategies: userStrategies,
+          computer_profile_name: computerProfileName,
+          num_simulations: numSimulations,
+          rounds_min: roundsMin,
+          rounds_max: roundsMax,
+        };
+        if (roundsMean !== undefined) requestData.rounds_mean = roundsMean;
+        if (roundsStd !== undefined) requestData.rounds_std = roundsStd;
 
-      const response = await api.post('/simulation/suite', requestData);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error running simulation suite:', error);
-      throw new Error(error.response?.data?.error || 'Failed to run simulation suite');
-    }
+        // Start simulation via REST API (expects 201)
+        api.post('/simulation/suite', requestData)
+          .then(response => {
+            const simulationId = response.data.simulation_id;
+            
+            // Create WebSocket connection
+            const socket: Socket = io(API_BASE_URL, {
+              timeout: 20000,
+              forceNew: true,
+              reconnection: false,
+              transports: ['websocket', 'polling']
+            });
+            
+            // Join simulation room
+            socket.emit('join_simulation', { simulation_id: simulationId });
+            
+            // Set up event listeners
+            socket.on('joined_simulation', () => {
+              console.log('Successfully joined simulation room:', simulationId);
+            });
+            
+            socket.on('simulation_started', (data: any) => {
+              console.log('Simulation started:', data);
+              if (onProgress) {
+                onProgress({ type: 'started', ...data });
+              }
+            });
+            
+            socket.on('simulation_progress', (data: any) => {
+              console.log('Simulation progress:', data);
+              if (onProgress) {
+                onProgress({ type: 'progress', ...data });
+              }
+            });
+            
+            socket.on('simulation_complete', (data: any) => {
+              console.log('Simulation completed:', data);
+              if (onProgress) {
+                onProgress({ type: 'complete', ...data });
+              }
+              socket.disconnect();
+              resolve(data.result);
+            });
+            
+            socket.on('simulation_error', (error: any) => {
+              console.error('Simulation error:', error);
+              if (onError) {
+                onError(error);
+              }
+              socket.disconnect();
+              reject(new Error(error.error || 'Simulation failed'));
+            });
+            
+            socket.on('connect_error', (error) => {
+              console.error('WebSocket connection error:', error);
+              const errMsg = 'Connection failed. Please try again.';
+              if (onError) {
+                onError({ error: errMsg });
+              }
+              socket.disconnect();
+              reject(new Error(errMsg));
+            });
+            
+            socket.on('disconnect', (reason) => {
+              console.log('Disconnected from simulation room:', reason);
+            });
+          })
+          .catch(error => {
+            console.error('Error starting simulation:', error);
+            const errorMsg = error.response?.data?.error || 'Failed to start simulation';
+            if (onError) {
+              onError({ error: errorMsg });
+            }
+            reject(new Error(errorMsg));
+          });
+      } catch (error: any) {
+        console.error('Error setting up simulation:', error);
+        const errorMsg = error.response?.data?.error || 'Failed to run simulation suite';
+        if (onError) {
+          onError({ error: errorMsg });
+        }
+        reject(new Error(errorMsg));
+      }
+    });
   },
 };
 

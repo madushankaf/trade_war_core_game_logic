@@ -115,6 +115,11 @@ interface SimulationSuiteResponse {
 
 // Component for displaying move histograms
 const MoveHistograms: React.FC<{ moveStatistics: MoveStatistics }> = ({ moveStatistics }) => {
+  // Debug: Log the computer moves data received
+  console.log('MoveHistograms - computer_moves received:', moveStatistics.computer_moves);
+  console.log('MoveHistograms - number of computer moves:', Object.keys(moveStatistics.computer_moves).length);
+  console.log('MoveHistograms - computer move names:', Object.keys(moveStatistics.computer_moves));
+
   // Prepare data for user moves frequency histogram
   const userMovesFrequencyData = Object.entries(moveStatistics.user_moves).map(([name, stats]) => ({
     name: name.replace(/_/g, ' ').toUpperCase(),
@@ -142,6 +147,9 @@ const MoveHistograms: React.FC<{ moveStatistics: MoveStatistics }> = ({ moveStat
     winRate: parseFloat(stats.win_rate.toFixed(1)),
     usageCount: stats.usage_count,
   })).sort((a, b) => b.winRate - a.winRate);
+
+  // Debug: Log the processed data
+  console.log('MoveHistograms - computerMovesFrequencyData:', computerMovesFrequencyData);
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
@@ -386,11 +394,17 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
   const [error, setError] = useState<string | null>(null);
   const [simulationResults, setSimulationResults] = useState<SimulationSuiteResponse | null>(null);
   const [numSimulations, setNumSimulations] = useState<number>(100); // Default to 100 for faster testing
-  const [roundsMean, setRoundsMean] = useState<number>(200);
-  const [roundsStd, setRoundsStd] = useState<number>(50);
-  const [roundsMin, setRoundsMin] = useState<number>(50);
-  const [roundsMax, setRoundsMax] = useState<number>(500);
+  const [roundsMean, setRoundsMean] = useState<number>(15);
+  const [roundsMin, setRoundsMin] = useState<number>(5);
+  const [roundsMax, setRoundsMax] = useState<number>(30);
   const [expandedStrategies, setExpandedStrategies] = useState<{ [key: string]: boolean }>({});
+  const [simulationProgress, setSimulationProgress] = useState<{
+    currentStrategy?: string;
+    strategyIndex?: number;
+    totalStrategies?: number;
+    progressPercentage?: number;
+    message?: string;
+  } | null>(null);
 
   const strategies = [
     { value: 'copy_cat', label: 'Copy Cat' },
@@ -510,6 +524,7 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
     setLoading(true);
     setError(null);
     setSimulationResults(null);
+    setSimulationProgress(null);
 
     try {
       const gameData = buildGameData();
@@ -527,18 +542,41 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
         selectedProfile,
         numSimulations,
         roundsMean,
-        roundsStd,
+        undefined, // roundsStd no longer used - replaced with Discrete Weibull mixture model
         roundsMin,
-        roundsMax
+        roundsMax,
+        // Progress callback
+        (progress: any) => {
+          if (progress.type === 'progress') {
+            setSimulationProgress({
+              currentStrategy: progress.current_strategy,
+              strategyIndex: progress.strategy_index,
+              totalStrategies: progress.total_strategies,
+              progressPercentage: progress.progress_percentage,
+              message: progress.message
+            });
+          } else if (progress.type === 'started') {
+            setSimulationProgress({
+              message: 'Simulation started...'
+            });
+          }
+        },
+        // Error callback
+        (error: any) => {
+          setError(error.error || 'Simulation error occurred');
+          setLoading(false);
+        }
       );
 
       setSimulationResults(results);
+      setSimulationProgress(null);
       setActiveStep(2);
       setLoading(false);
     } catch (err: any) {
       console.error('Error running simulation:', err);
       setError(err.message || 'Failed to run simulation');
       setLoading(false);
+      setSimulationProgress(null);
     }
   };
 
@@ -695,17 +733,8 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                   label="Mean Rounds"
                   type="number"
                   value={roundsMean}
-                  onChange={(e) => setRoundsMean(parseInt(e.target.value) || 200)}
-                  helperText="Average number of rounds per simulation"
-                />
-
-                <TextField
-                  fullWidth
-                  label="Rounds Std Deviation"
-                  type="number"
-                  value={roundsStd}
-                  onChange={(e) => setRoundsStd(parseFloat(e.target.value) || 50)}
-                  helperText="Standard deviation for rounds distribution"
+                  onChange={(e) => setRoundsMean(parseInt(e.target.value) || 15)}
+                  helperText="Target average number of rounds (uses Discrete Weibull mixture model)"
                 />
 
                 <TextField
@@ -713,7 +742,8 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                   label="Min Rounds"
                   type="number"
                   value={roundsMin}
-                  onChange={(e) => setRoundsMin(parseInt(e.target.value) || 50)}
+                  onChange={(e) => setRoundsMin(parseInt(e.target.value) || 5)}
+                  helperText="Minimum number of rounds (safety limit)"
                 />
 
                 <TextField
@@ -721,8 +751,24 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                   label="Max Rounds"
                   type="number"
                   value={roundsMax}
-                  onChange={(e) => setRoundsMax(parseInt(e.target.value) || 500)}
+                  onChange={(e) => setRoundsMax(parseInt(e.target.value) || 30)}
+                  helperText="Maximum number of rounds (hard cap)"
                 />
+              </Box>
+
+              {/* Model Information */}
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Simulation Model: Discrete Weibull Mixture
+                </Typography>
+                <Typography variant="body2" component="div">
+                  The simulation uses a realistic stochastic model with two regimes:
+                  <ul style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
+                    <li><strong>80% Normal/Negotiable:</strong> Increasing hazard (conflicts get harder to resolve over time)</li>
+                    <li><strong>20% Entrenched:</strong> Decreasing hazard (conflicts stabilize and persist)</li>
+                  </ul>
+                  This better captures the stochastic nature of trade war durations compared to simple normal distributions.
+                </Typography>
               </Box>
             </Box>
 
@@ -748,10 +794,20 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
 
             {loading && (
               <Box sx={{ mt: 3 }}>
-                <LinearProgress sx={{ height: 8 }} />
+                <LinearProgress 
+                  variant={simulationProgress?.progressPercentage !== undefined ? "determinate" : "indeterminate"}
+                  value={simulationProgress?.progressPercentage || 0}
+                  sx={{ height: 8 }} 
+                />
                 <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
-                  Running {numSimulations} simulations per strategy. This may take a while...
+                  {simulationProgress?.message || `Running ${numSimulations} simulations per strategy. This may take a while...`}
                 </Typography>
+                {simulationProgress?.currentStrategy && (
+                  <Typography variant="body2" sx={{ mt: 0.5, textAlign: 'center', color: 'text.secondary' }}>
+                    Strategy {simulationProgress.strategyIndex} of {simulationProgress.totalStrategies}: {simulationProgress.currentStrategy}
+                    {simulationProgress.progressPercentage !== undefined && ` (${simulationProgress.progressPercentage.toFixed(1)}%)`}
+                  </Typography>
+                )}
               </Box>
             )}
           </CardContent>

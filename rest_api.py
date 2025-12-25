@@ -69,6 +69,24 @@ def handle_disconnect():
     """Handle client disconnect"""
     logger.info('Client disconnected')
 
+@socketio.on('join_simulation')
+def handle_join_simulation(data):
+    """Handle client joining a simulation room"""
+    simulation_id = data.get('simulation_id')
+    if simulation_id:
+        join_room(simulation_id)
+        emit('joined_simulation', {'simulation_id': simulation_id, 'message': 'Successfully joined simulation room'})
+        logger.info(f"Client joined simulation room: {simulation_id}")
+
+@socketio.on('leave_simulation')
+def handle_leave_simulation(data):
+    """Handle client leaving a simulation room"""
+    simulation_id = data.get('simulation_id')
+    if simulation_id:
+        leave_room(simulation_id)
+        emit('left_simulation', {'simulation_id': simulation_id, 'message': 'Left simulation room'})
+        logger.info(f"Client left simulation room: {simulation_id}")
+
 def validate_json_data(data):
     """
     Validate that the request data is valid JSON.
@@ -479,6 +497,7 @@ def run_simulation_suite_endpoint():
     Run a Monte Carlo simulation suite: multiple user strategies against one computer profile.
     
     Uses a Monte Carlo approach where each simulation runs for a randomly sampled number of rounds.
+    Returns 201 (Accepted) and runs simulation asynchronously. Results are sent via WebSocket.
     
     Request body:
     {
@@ -496,36 +515,17 @@ def run_simulation_suite_endpoint():
         "rounds_max": 500  # optional, maximum rounds (default: 500)
     }
     
-    Returns:
+    Returns 201 with:
     {
-        "computer_profile": str,
-        "num_simulations": int,
-        "rounds_statistics": {
-            "mean": float,
-            "std": float,
-            "min": int,
-            "max": int
-        },
-        "results": [
-            {
-                "user_strategy": str,
-                "simulations": [...],  # Note: large list of results
-                "average_user_payoff": float,
-                "average_computer_payoff": float,
-                "average_payoff_difference": float,
-                "win_rate": float,
-                "std_user_payoff": float,
-                "std_computer_payoff": float,
-                "num_successful_simulations": int
-            },
-            ...
-        ],
-        "summary": {
-            "best_strategy": str,
-            "worst_strategy": str,
-            "most_wins": str
-        }
+        "simulation_id": str,
+        "message": "Simulation started",
+        "status": "running"
     }
+    
+    WebSocket events (join room with simulation_id):
+    - simulation_progress: Progress updates during simulation
+    - simulation_complete: Final results when simulation completes
+    - simulation_error: Error occurred during simulation
     """
     try:
         data = request.get_json()
@@ -548,26 +548,69 @@ def run_simulation_suite_endpoint():
             if strategy not in valid_strategies:
                 return jsonify({'error': f'Invalid strategy: {strategy}. Must be one of: {valid_strategies}'}), 400
         
-        # Run Monte Carlo simulation suite
-        result = run_simulation_suite(
-            base_game_config=data['base_game_config'],
-            user_strategies=data['user_strategies'],
-            computer_profile_name=data['computer_profile_name'],
-            profile_manager=profile_manager,
-            num_simulations=data.get('num_simulations', 5000),
-            rounds_mean=data.get('rounds_mean'),
-            rounds_std=data.get('rounds_std'),
-            rounds_min=data.get('rounds_min', 50),
-            rounds_max=data.get('rounds_max', 500)
-        )
+        # Generate simulation ID
+        simulation_id = f"sim_suite_{uuid.uuid4()}"
         
-        return jsonify(result), 200
+        # Run simulation in background thread
+        def run_simulation_async():
+            try:
+                # Emit start event
+                socketio.emit('simulation_started', {
+                    'simulation_id': simulation_id,
+                    'message': 'Simulation started',
+                    'user_strategies': data['user_strategies'],
+                    'computer_profile': data['computer_profile_name'],
+                    'num_simulations': data.get('num_simulations', 5000)
+                }, room=simulation_id)
+                
+                # Run Monte Carlo simulation suite with progress updates
+                result = run_simulation_suite(
+                    base_game_config=data['base_game_config'],
+                    user_strategies=data['user_strategies'],
+                    computer_profile_name=data['computer_profile_name'],
+                    profile_manager=profile_manager,
+                    num_simulations=data.get('num_simulations', 5000),
+                    rounds_mean=data.get('rounds_mean'),
+                    rounds_std=data.get('rounds_std'),
+                    rounds_min=data.get('rounds_min', 50),
+                    rounds_max=data.get('rounds_max', 500),
+                    socketio=socketio,
+                    simulation_id=simulation_id
+                )
+                
+                # Emit completion event with results
+                socketio.emit('simulation_complete', {
+                    'simulation_id': simulation_id,
+                    'result': result
+                }, room=simulation_id)
+                
+                logger.info(f"Simulation {simulation_id} completed successfully")
+                
+            except Exception as e:
+                logger.error(f"Error in background simulation {simulation_id}: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                socketio.emit('simulation_error', {
+                    'simulation_id': simulation_id,
+                    'error': str(e)
+                }, room=simulation_id)
+        
+        # Start simulation in background thread
+        sim_thread = threading.Thread(target=run_simulation_async)
+        sim_thread.daemon = True
+        sim_thread.start()
+        
+        return jsonify({
+            'simulation_id': simulation_id,
+            'message': 'Simulation started',
+            'status': 'running'
+        }), 201
         
     except ValueError as e:
         logger.error(f"Validation error in simulation suite: {str(e)}")
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        logger.error(f"Error running simulation suite: {str(e)}")
+        logger.error(f"Error starting simulation suite: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500

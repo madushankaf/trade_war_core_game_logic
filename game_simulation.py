@@ -77,6 +77,7 @@ def calculate_move_statistics(simulation_results: List[Dict[str, Any]], payoff_m
     total_combinations = 0
     
     # Process each simulation
+    all_computer_moves_seen = set()
     for sim_result in simulation_results:
         move_history = sim_result.get('move_history', [])
         user_won = sim_result.get('user_won', False)
@@ -89,6 +90,9 @@ def calculate_move_statistics(simulation_results: List[Dict[str, Any]], payoff_m
         for move_round in move_history:
             user_move_name = move_round.get('user_move_name', 'unknown')
             computer_move_name = move_round.get('computer_move_name', 'unknown')
+            
+            # Track all unique computer moves seen
+            all_computer_moves_seen.add(computer_move_name)
             
             # Update user move statistics
             user_move_stats[user_move_name]['count'] += 1
@@ -185,6 +189,11 @@ def calculate_move_statistics(simulation_results: List[Dict[str, Any]], payoff_m
             'usage_count': num_sims_with_move  # Number of simulations that used this move
         }
     
+    # Debug logging: log all computer moves found
+    logger.info(f"calculate_move_statistics: Found {len(computer_move_stats)} unique computer moves: {list(computer_move_stats.keys())}")
+    logger.info(f"calculate_move_statistics: All computer moves seen in move_history: {sorted(all_computer_moves_seen)}")
+    logger.info(f"calculate_move_statistics: Total moves analyzed: {total_moves}")
+    
     computer_moves_result = {}
     for move_name, stats in computer_move_stats.items():
         count = stats['count']
@@ -196,6 +205,7 @@ def calculate_move_statistics(simulation_results: List[Dict[str, Any]], payoff_m
             'win_rate': (stats['wins'] / num_sims_with_move * 100) if num_sims_with_move > 0 else 0.0,
             'usage_count': num_sims_with_move
         }
+        logger.debug(f"Computer move '{move_name}': frequency={count}, win_rate={computer_moves_result[move_name]['win_rate']:.2f}%")
     
     move_combinations_result = {}
     for combo_key, combo_data in move_combination_stats.items():
@@ -391,18 +401,36 @@ def run_single_simulation(
         
         # Extract move history for move-level analysis
         move_history = []
+        computer_moves_in_history = set()
         if iteration_moves:
             all_moves = iteration_moves.get_moves()
             # We need to get payoffs per round, but we don't have that in iteration_moves
             # So we'll just track move names for frequency analysis
             # For payoff analysis, we'd need to recalculate or store during game play
             for user_move, computer_move in all_moves:
+                # Extract move names with proper handling
+                if isinstance(computer_move, dict):
+                    computer_move_name = computer_move.get('name', 'unknown')
+                else:
+                    computer_move_name = getattr(computer_move, 'name', 'unknown')
+                
+                if isinstance(user_move, dict):
+                    user_move_name = user_move.get('name', 'unknown')
+                else:
+                    user_move_name = getattr(user_move, 'name', 'unknown')
+                
+                computer_moves_in_history.add(computer_move_name)
+                
                 move_history.append({
-                    'user_move_name': user_move.get('name', 'unknown') if isinstance(user_move, dict) else getattr(user_move, 'name', 'unknown'),
+                    'user_move_name': user_move_name,
                     'user_move_type': user_move.get('type', 'unknown') if isinstance(user_move, dict) else getattr(user_move, 'type', 'unknown'),
-                    'computer_move_name': computer_move.get('name', 'unknown') if isinstance(computer_move, dict) else getattr(computer_move, 'name', 'unknown'),
+                    'computer_move_name': computer_move_name,
                     'computer_move_type': computer_move.get('type', 'unknown') if isinstance(computer_move, dict) else getattr(computer_move, 'type', 'unknown')
                 })
+        
+        # Debug logging for move extraction
+        if computer_moves_in_history:
+            logger.debug(f"Simulation {simulation_id}: Found {len(computer_moves_in_history)} unique computer moves in move_history: {sorted(computer_moves_in_history)}")
         
         return {
             'simulation_id': simulation_id,
@@ -420,6 +448,155 @@ def run_single_simulation(
         raise
 
 
+def sample_discrete_weibull(q: float, beta: float, max_rounds: int = 1000) -> int:
+    """
+    Sample from a Discrete Weibull distribution.
+    
+    The Discrete Weibull distribution models the number of rounds until an event
+    (e.g., trade war resolution) with a hazard-based approach.
+    
+    Survival function: S(k) = q^(k^beta) for k = 0, 1, 2, ...
+    - For beta > 1: increasing hazard (fatigue - conflicts get harder to resolve)
+    - For beta < 1: decreasing hazard (entrenchment - conflicts stabilize)
+    - For beta = 1: constant hazard (exponential/geometric)
+    
+    Args:
+        q: Scale parameter (0 < q < 1), controls base survival probability
+        beta: Shape parameter (beta > 0), controls hazard behavior
+        max_rounds: Maximum rounds to consider (safety limit)
+        
+    Returns:
+        Positive integer number of rounds
+    """
+    # Generate uniform random variable
+    u = np.random.uniform(0, 1)
+    
+    # Find k such that S(k) <= u < S(k-1)
+    # S(k) = q^(k^beta), so we need q^(k^beta) <= u
+    # Taking logs: k^beta * ln(q) <= ln(u)
+    # Since ln(q) < 0, we have: k^beta >= ln(u) / ln(q)
+    # Therefore: k >= (ln(u) / ln(q))^(1/beta)
+    
+    if u >= 1.0 or q <= 0 or q >= 1:
+        return 1  # Safety fallback
+    
+    if beta <= 0:
+        return 1  # Safety fallback
+    
+    # Calculate the minimum k that satisfies the condition
+    # We solve: q^(k^beta) <= u
+    # k^beta >= ln(u) / ln(q)
+    # k >= (ln(u) / ln(q))^(1/beta)
+    
+    log_u = np.log(u)
+    log_q = np.log(q)
+    
+    if log_q == 0:
+        return 1
+    
+    # Calculate k using the inverse survival function
+    k_power = log_u / log_q
+    
+    if k_power <= 0:
+        return 1
+    
+    k = int(np.ceil(k_power ** (1.0 / beta)))
+    
+    # Ensure positive integer and within bounds
+    k = max(1, min(k, max_rounds))
+    
+    return k
+
+
+def sample_trade_war_rounds(
+    rounds_mean: float,
+    rounds_min: int = 1,
+    rounds_max: int = 1000,
+    num_samples: int = 1,
+    normal_regime_prob: float = 0.8,
+    normal_beta: float = 1.5,
+    entrenched_beta: float = 0.7
+) -> np.ndarray:
+    """
+    Sample trade war durations using a mixture model of two regimes.
+    
+    Model:
+    - 80% normal/negotiable trade wars: increasing hazard (fatigue)
+      * Conflicts get harder to resolve over time
+      * Uses Discrete Weibull with beta > 1
+    - 20% entrenched trade wars: decreasing hazard (entrenchment)
+      * Conflicts stabilize and become persistent
+      * Uses Discrete Weibull with beta < 1
+    
+    The q parameter is calibrated to match the desired rounds_mean.
+    
+    Args:
+        rounds_mean: Target mean number of rounds
+        rounds_min: Minimum number of rounds (default: 1)
+        rounds_max: Hard cap on maximum rounds
+        num_samples: Number of samples to generate
+        normal_regime_prob: Probability of normal regime (default: 0.8)
+        normal_beta: Beta parameter for normal regime (default: 1.5, increasing hazard)
+        entrenched_beta: Beta parameter for entrenched regime (default: 0.7, decreasing hazard)
+        
+    Returns:
+        Array of positive integers representing number of rounds, clamped to [rounds_min, rounds_max]
+    """
+    def calibrate_q(target_mean: float, beta: float, max_iter: int = 50) -> float:
+        """
+        Calibrate q to achieve target mean using binary search.
+        
+        For Discrete Weibull, lower q values produce longer durations.
+        We use binary search to find q that gives the desired mean.
+        Note: The calibration accounts for the rounds_min constraint by adjusting
+        the target mean to be relative to the valid range.
+        """
+        q_low, q_high = 0.01, 0.99
+        
+        for _ in range(max_iter):
+            q_mid = (q_low + q_high) / 2
+            
+            # Estimate mean by sampling (use smaller sample for speed)
+            test_samples = [sample_discrete_weibull(q_mid, beta, rounds_max) for _ in range(500)]
+            # Clamp samples to respect rounds_min
+            test_samples = [max(rounds_min, min(s, rounds_max)) for s in test_samples]
+            test_mean = np.mean(test_samples)
+            
+            if abs(test_mean - target_mean) < 0.5:
+                return q_mid
+            
+            if test_mean < target_mean:
+                q_high = q_mid  # Lower q means longer durations, need to decrease q
+            else:
+                q_low = q_mid
+        
+        return (q_low + q_high) / 2
+    
+    # Calibrate q for normal regime (target mean around rounds_mean)
+    normal_q = calibrate_q(rounds_mean, normal_beta)
+    
+    # Calibrate q for entrenched regime (target mean slightly higher, but more variable)
+    entrenched_q = calibrate_q(rounds_mean * 1.2, entrenched_beta)
+    
+    # Sample from mixture using vectorized approach where possible
+    regime_choices = np.random.uniform(0, 1, size=num_samples)
+    samples = []
+    
+    for i in range(num_samples):
+        if regime_choices[i] < normal_regime_prob:
+            # Normal regime: increasing hazard (fatigue)
+            rounds = sample_discrete_weibull(normal_q, normal_beta, rounds_max)
+        else:
+            # Entrenched regime: decreasing hazard (stabilization)
+            rounds = sample_discrete_weibull(entrenched_q, entrenched_beta, rounds_max)
+        
+        # Apply hard cap and ensure within [rounds_min, rounds_max] range
+        rounds = max(rounds_min, min(rounds, rounds_max))
+        samples.append(rounds)
+    
+    return np.array(samples, dtype=int)
+
+
 def run_simulation_suite(
     base_game_config: Dict[str, Any],
     user_strategies: List[str],
@@ -429,7 +606,9 @@ def run_simulation_suite(
     rounds_mean: Optional[int] = None,
     rounds_std: Optional[float] = None,
     rounds_min: int = 50,
-    rounds_max: int = 500
+    rounds_max: int = 500,
+    socketio=None,
+    simulation_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Run a Monte Carlo simulation suite: multiple user strategies against the computer profile.
@@ -501,16 +680,48 @@ def run_simulation_suite(
     
     all_results = []
     all_sampled_rounds = []
+    total_strategies = len(user_strategies)
+    total_simulations = total_strategies * num_simulations
     
-    for strategy in user_strategies:
+    for strategy_idx, strategy in enumerate(user_strategies):
         logger.info(f"Running {num_simulations} simulations for strategy: {strategy}")
+        
+        # Emit strategy start progress
+        if socketio and simulation_id:
+            socketio.emit('simulation_progress', {
+                'simulation_id': simulation_id,
+                'status': 'running',
+                'current_strategy': strategy,
+                'strategy_index': strategy_idx + 1,
+                'total_strategies': total_strategies,
+                'message': f'Running simulations for {strategy}...'
+            }, room=simulation_id)
+        
         strategy_results = []
         failed_simulations = []  # Track failed simulations with error details
         
-        # Sample random number of rounds for each simulation using normal distribution
-        # Clip to ensure values are within [rounds_min, rounds_max] range
-        sampled_rounds = np.random.normal(loc=rounds_mean, scale=rounds_std, size=num_simulations)
-        sampled_rounds = np.clip(sampled_rounds, rounds_min, rounds_max).astype(int)
+        # Sample random number of rounds
+        # If rounds_std is explicitly provided, use normal distribution (respects user's min/max/mean/std)
+        # Otherwise, use mixture model of Discrete Weibull distributions for more realistic trade war durations
+        if rounds_std is not None and rounds_std > 0:
+            # Use normal distribution when user explicitly provides std (gives precise control)
+            sampled_rounds = np.random.normal(loc=rounds_mean, scale=rounds_std, size=num_simulations)
+            sampled_rounds = np.clip(sampled_rounds, rounds_min, rounds_max).astype(int)
+        else:
+            # Use mixture model of Discrete Weibull distributions:
+            # - 80% normal/negotiable trade wars: increasing hazard (fatigue over time)
+            # - 20% entrenched trade wars: decreasing hazard (stabilization/entrenchment)
+            # The model better captures the stochastic nature of trade war durations
+            sampled_rounds = sample_trade_war_rounds(
+                rounds_mean=rounds_mean,
+                rounds_min=rounds_min,
+                rounds_max=rounds_max,
+                num_samples=num_simulations,
+                normal_regime_prob=0.8,  # 80% normal, 20% entrenched
+                normal_beta=1.5,         # Increasing hazard (fatigue)
+                entrenched_beta=0.7      # Decreasing hazard (entrenchment)
+            )
+        
         all_sampled_rounds.extend(sampled_rounds)
         
         # Run simulations independently for this strategy
@@ -547,9 +758,24 @@ def run_simulation_suite(
                 # Continue with other simulations even if one fails
                 continue
             
-            # Log progress for long-running simulations
+            # Log progress for long-running simulations and emit via WebSocket
             if (sim_num + 1) % 500 == 0:
                 logger.info(f"  Progress: {sim_num + 1}/{num_simulations} simulations completed for {strategy}")
+                if socketio and simulation_id:
+                    completed_sims = strategy_idx * num_simulations + (sim_num + 1)
+                    socketio.emit('simulation_progress', {
+                        'simulation_id': simulation_id,
+                        'status': 'running',
+                        'current_strategy': strategy,
+                        'strategy_index': strategy_idx + 1,
+                        'total_strategies': total_strategies,
+                        'simulations_completed_for_strategy': sim_num + 1,
+                        'total_simulations_for_strategy': num_simulations,
+                        'total_completed': completed_sims,
+                        'total_simulations': total_simulations,
+                        'progress_percentage': (completed_sims / total_simulations * 100) if total_simulations > 0 else 0,
+                        'message': f'Completed {sim_num + 1}/{num_simulations} simulations for {strategy}'
+                    }, room=simulation_id)
         
         # Calculate statistics for this strategy
         if strategy_results:
@@ -582,6 +808,22 @@ def run_simulation_suite(
                 'failed_simulations': failed_simulations,  # Include error details
                 'move_statistics': move_stats  # Add move-level statistics for histograms
             })
+            
+            # Emit strategy completion progress
+            if socketio and simulation_id:
+                completed_sims = (strategy_idx + 1) * num_simulations
+                socketio.emit('simulation_progress', {
+                    'simulation_id': simulation_id,
+                    'status': 'running',
+                    'current_strategy': strategy,
+                    'strategy_index': strategy_idx + 1,
+                    'total_strategies': total_strategies,
+                    'strategy_completed': True,
+                    'total_completed': completed_sims,
+                    'total_simulations': total_simulations,
+                    'progress_percentage': (completed_sims / total_simulations * 100) if total_simulations > 0 else 0,
+                    'message': f'Completed all simulations for {strategy}'
+                }, room=simulation_id)
         else:
             logger.error(f"No successful simulations for strategy: {strategy}")
             all_results.append({

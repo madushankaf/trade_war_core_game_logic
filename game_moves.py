@@ -1,4 +1,5 @@
 from typing import Optional, Any
+import copy
 
 class MoveNode:
     def __init__(self, user_move: Any, computer_move: Any):
@@ -13,8 +14,25 @@ class GameMoves:
         self.size = 0
 
     def add_moves(self, user_move: Any, computer_move: Any) -> None:
-        """Add a new pair of moves to the linked list."""
-        new_node = MoveNode(user_move, computer_move)
+        """Add a new pair of moves to the linked list.
+        
+        Makes a copy of move dictionaries to avoid reference issues where
+        the same dictionary object is reused and modified.
+        """
+        # Make copies of move dictionaries to avoid reference issues
+        # If moves are dicts, copy them; otherwise use as-is
+        # Using copy.copy() (shallow copy) is sufficient since move dicts don't have nested mutable structures
+        if isinstance(user_move, dict):
+            user_move_copy = copy.copy(user_move)
+        else:
+            user_move_copy = user_move
+            
+        if isinstance(computer_move, dict):
+            computer_move_copy = copy.copy(computer_move)
+        else:
+            computer_move_copy = computer_move
+        
+        new_node = MoveNode(user_move_copy, computer_move_copy)
         
         if self.head is None:
             self.head = new_node
