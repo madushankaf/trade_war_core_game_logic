@@ -28,6 +28,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ErrorIcon from '@mui/icons-material/Error';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Country, GameModel } from '../types/game';
 import { countries, defaultMoves } from '../data/countries';
 import { profiles } from '../data/profiles';
@@ -49,6 +50,37 @@ interface FailedSimulation {
   traceback?: string;
 }
 
+interface MoveStatistics {
+  user_moves: {
+    [moveName: string]: {
+      frequency: number;
+      frequency_percentage: number;
+      average_payoff: number;
+      win_rate: number;
+      usage_count: number;
+    };
+  };
+  computer_moves: {
+    [moveName: string]: {
+      frequency: number;
+      frequency_percentage: number;
+      average_payoff: number;
+      win_rate: number;
+      usage_count: number;
+    };
+  };
+  move_combinations: {
+    [comboKey: string]: {
+      frequency: number;
+      frequency_percentage: number;
+      average_user_payoff: number;
+      average_computer_payoff: number;
+    };
+  };
+  total_moves_analyzed: number;
+  total_combinations_analyzed: number;
+}
+
 interface SimulationResult {
   user_strategy: string;
   simulations: any[];
@@ -61,6 +93,7 @@ interface SimulationResult {
   num_successful_simulations: number;
   num_failed_simulations?: number;
   failed_simulations?: FailedSimulation[];
+  move_statistics?: MoveStatistics;
 }
 
 interface SimulationSuiteResponse {
@@ -80,6 +113,267 @@ interface SimulationSuiteResponse {
   };
 }
 
+// Component for displaying move histograms
+const MoveHistograms: React.FC<{ moveStatistics: MoveStatistics }> = ({ moveStatistics }) => {
+  // Prepare data for user moves frequency histogram
+  const userMovesFrequencyData = Object.entries(moveStatistics.user_moves).map(([name, stats]) => ({
+    name: name.replace(/_/g, ' ').toUpperCase(),
+    frequency: stats.frequency,
+    percentage: stats.frequency_percentage.toFixed(1),
+  })).sort((a, b) => b.frequency - a.frequency);
+
+  // Prepare data for user moves win rate histogram
+  const userMovesWinRateData = Object.entries(moveStatistics.user_moves).map(([name, stats]) => ({
+    name: name.replace(/_/g, ' ').toUpperCase(),
+    winRate: parseFloat(stats.win_rate.toFixed(1)),
+    usageCount: stats.usage_count,
+  })).sort((a, b) => b.winRate - a.winRate);
+
+  // Prepare data for computer moves frequency histogram
+  const computerMovesFrequencyData = Object.entries(moveStatistics.computer_moves).map(([name, stats]) => ({
+    name: name.replace(/_/g, ' ').toUpperCase(),
+    frequency: stats.frequency,
+    percentage: stats.frequency_percentage.toFixed(1),
+  })).sort((a, b) => b.frequency - a.frequency);
+
+  // Prepare data for computer moves win rate histogram
+  const computerMovesWinRateData = Object.entries(moveStatistics.computer_moves).map(([name, stats]) => ({
+    name: name.replace(/_/g, ' ').toUpperCase(),
+    winRate: parseFloat(stats.win_rate.toFixed(1)),
+    usageCount: stats.usage_count,
+  })).sort((a, b) => b.winRate - a.winRate);
+
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+      {/* User Moves Frequency */}
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            User Moves - Frequency
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            How often each move was used
+          </Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={userMovesFrequencyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={100}
+                interval={0}
+                tick={{ fontSize: 10 }}
+              />
+              <YAxis />
+              <Tooltip 
+                formatter={(value: any, name: string) => {
+                  if (name === 'frequency') {
+                    const item = userMovesFrequencyData.find(d => d.frequency === value);
+                    return [`${value} (${item?.percentage}%)`, 'Frequency'];
+                  }
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Bar dataKey="frequency" fill="#1976d2" name="Frequency" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* User Moves Win Rate */}
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            User Moves - Win Rate
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Success rate when each move was used
+          </Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={userMovesWinRateData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={100}
+                interval={0}
+                tick={{ fontSize: 10 }}
+              />
+              <YAxis domain={[0, 100]} />
+              <Tooltip 
+                formatter={(value: any, name: string) => {
+                  if (name === 'winRate') {
+                    const item = userMovesWinRateData.find(d => d.winRate === value);
+                    return [`${value.toFixed(1)}% (used in ${item?.usageCount} simulations)`, 'Win Rate'];
+                  }
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Bar dataKey="winRate" fill="#2e7d32" name="Win Rate %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Computer Moves Frequency */}
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Computer Moves - Frequency
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            How often each move was used
+          </Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={computerMovesFrequencyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={100}
+                interval={0}
+                tick={{ fontSize: 10 }}
+              />
+              <YAxis />
+              <Tooltip 
+                formatter={(value: any, name: string) => {
+                  if (name === 'frequency') {
+                    const item = computerMovesFrequencyData.find(d => d.frequency === value);
+                    return [`${value} (${item?.percentage}%)`, 'Frequency'];
+                  }
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Bar dataKey="frequency" fill="#d32f2f" name="Frequency" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Computer Moves Win Rate */}
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Computer Moves - Win Rate
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Success rate when each move was used
+          </Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={computerMovesWinRateData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={100}
+                interval={0}
+                tick={{ fontSize: 10 }}
+              />
+              <YAxis domain={[0, 100]} />
+              <Tooltip 
+                formatter={(value: any, name: string) => {
+                  if (name === 'winRate') {
+                    const item = computerMovesWinRateData.find(d => d.winRate === value);
+                    return [`${value.toFixed(1)}% (used in ${item?.usageCount} simulations)`, 'Win Rate'];
+                  }
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Bar dataKey="winRate" fill="#ed6c02" name="Win Rate %" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
+
+// Component for expandable strategy row
+const StrategyRow: React.FC<{
+  result: SimulationResult;
+  simulationResults: SimulationSuiteResponse;
+  expanded: boolean;
+  onToggle: () => void;
+}> = ({ result, simulationResults, expanded, onToggle }) => {
+  // Calculate computer win rate
+  let computerWinRate: number;
+  if (result.simulations && result.simulations.length > 0 && result.simulations.length <= 1000) {
+    const computerWins = result.simulations.filter((sim: any) => 
+      sim.final_computer_payoff > sim.final_user_payoff
+    ).length;
+    computerWinRate = (computerWins / result.simulations.length) * 100;
+  } else {
+    computerWinRate = 100 - result.win_rate;
+  }
+  
+  const numFailed = result.num_failed_simulations || 0;
+  const hasFailures = numFailed > 0;
+
+  return (
+    <React.Fragment>
+      <TableRow>
+        <TableCell>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip 
+              label={result.user_strategy} 
+              color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
+            />
+            {result.move_statistics && (
+              <IconButton
+                size="small"
+                onClick={onToggle}
+                sx={{ ml: 1 }}
+              >
+                {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            )}
+          </Box>
+        </TableCell>
+        <TableCell align="right">{result.average_user_payoff.toFixed(2)}</TableCell>
+        <TableCell align="right">{result.std_user_payoff.toFixed(2)}</TableCell>
+        <TableCell align="right">{result.average_computer_payoff.toFixed(2)}</TableCell>
+        <TableCell align="right">{result.win_rate.toFixed(1)}%</TableCell>
+        <TableCell align="right">{computerWinRate.toFixed(1)}%</TableCell>
+        <TableCell align="right">{result.num_successful_simulations}</TableCell>
+        <TableCell align="right">
+          {hasFailures ? (
+            <Chip 
+              label={numFailed} 
+              color="error" 
+              size="small"
+              icon={<ErrorIcon />}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">0</Typography>
+          )}
+        </TableCell>
+      </TableRow>
+      {result.move_statistics && (
+        <TableRow>
+          <TableCell colSpan={8} sx={{ py: 0, border: 0 }}>
+            <Collapse in={expanded} timeout="auto" unmountOnExit>
+              <Box sx={{ py: 3, px: 2, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                  Move Statistics for {result.user_strategy}
+                </Typography>
+                <MoveHistograms moveStatistics={result.move_statistics} />
+              </Box>
+            </Collapse>
+          </TableCell>
+        </TableRow>
+      )}
+    </React.Fragment>
+  );
+};
+
 const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [userCountry, setUserCountry] = useState<Country | null>(null);
@@ -96,6 +390,7 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
   const [roundsStd, setRoundsStd] = useState<number>(50);
   const [roundsMin, setRoundsMin] = useState<number>(50);
   const [roundsMax, setRoundsMax] = useState<number>(500);
+  const [expandedStrategies, setExpandedStrategies] = useState<{ [key: string]: boolean }>({});
 
   const strategies = [
     { value: 'copy_cat', label: 'Copy Cat' },
@@ -500,57 +795,18 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {simulationResults.results.map((result) => {
-                    // Calculate computer win rate
-                    // If simulations array is available and not too large, calculate from data
-                    // Otherwise, use 100 - user_win_rate (assuming no ties or treating ties as losses)
-                    let computerWinRate: number;
-                    if (result.simulations && result.simulations.length > 0 && result.simulations.length <= 1000) {
-                      // Calculate from actual data for accuracy (handles ties)
-                      const computerWins = result.simulations.filter((sim: any) => 
-                        sim.final_computer_payoff > sim.final_user_payoff
-                      ).length;
-                      computerWinRate = (computerWins / result.simulations.length) * 100;
-                    } else {
-                      // Fallback: assume computer win rate is 100 - user win rate
-                      // (ties would be excluded from both, but this is a reasonable approximation)
-                      computerWinRate = 100 - result.win_rate;
-                    }
-                    
-                    const numFailed = result.num_failed_simulations || 0;
-                    const hasFailures = numFailed > 0;
-                    
-                    return (
-                      <React.Fragment key={result.user_strategy}>
-                        <TableRow>
-                          <TableCell>
-                            <Chip 
-                              label={result.user_strategy} 
-                              color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
-                            />
-                          </TableCell>
-                          <TableCell align="right">{result.average_user_payoff.toFixed(2)}</TableCell>
-                          <TableCell align="right">{result.std_user_payoff.toFixed(2)}</TableCell>
-                          <TableCell align="right">{result.average_computer_payoff.toFixed(2)}</TableCell>
-                          <TableCell align="right">{result.win_rate.toFixed(1)}%</TableCell>
-                          <TableCell align="right">{computerWinRate.toFixed(1)}%</TableCell>
-                          <TableCell align="right">{result.num_successful_simulations}</TableCell>
-                          <TableCell align="right">
-                            {hasFailures ? (
-                              <Chip 
-                                label={numFailed} 
-                                color="error" 
-                                size="small"
-                                icon={<ErrorIcon />}
-                              />
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">0</Typography>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      </React.Fragment>
-                    );
-                  })}
+                  {simulationResults.results.map((result) => (
+                    <StrategyRow
+                      key={result.user_strategy}
+                      result={result}
+                      simulationResults={simulationResults}
+                      expanded={expandedStrategies[result.user_strategy] || false}
+                      onToggle={() => setExpandedStrategies(prev => ({
+                        ...prev,
+                        [result.user_strategy]: !prev[result.user_strategy]
+                      }))}
+                    />
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>

@@ -6,6 +6,7 @@ where different user strategies are tested against the computer's core game logi
 """
 
 from typing import Dict, List, Optional, Tuple, Any
+from collections import defaultdict
 import uuid
 import numpy as np
 from game_model import GameModel, Move, MoveType, PlayerType, StrategyType, UserStrategySettings, GameState, PayoffEntry
@@ -29,6 +30,192 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def calculate_move_statistics(simulation_results: List[Dict[str, Any]], payoff_matrix: List[PayoffEntry]) -> Dict[str, Any]:
+    """
+    Calculate move-level statistics from simulation results.
+    
+    Args:
+        simulation_results: List of simulation result dictionaries, each containing 'move_history' and 'user_won'
+        payoff_matrix: Payoff matrix for calculating move payoffs
+        
+    Returns:
+        Dictionary with move statistics:
+        {
+            'user_moves': {
+                'move_name': {
+                    'frequency': int,
+                    'frequency_percentage': float,
+                    'average_payoff': float,
+                    'win_rate': float,  # Percentage of simulations where user won when this move was used
+                    'usage_count': int
+                }
+            },
+            'computer_moves': {
+                'move_name': {
+                    'frequency': int,
+                    'frequency_percentage': float,
+                    'average_payoff': float,
+                    'win_rate': float,  # Percentage of simulations where computer won when this move was used
+                    'usage_count': int
+                }
+            },
+            'move_combinations': {
+                '(user_move, computer_move)': {
+                    'frequency': int,
+                    'frequency_percentage': float,
+                    'average_user_payoff': float,
+                    'average_computer_payoff': float
+                }
+            }
+        }
+    """
+    user_move_stats = defaultdict(lambda: {'count': 0, 'total_payoff': 0.0, 'wins': 0, 'simulations_with_move': set()})
+    computer_move_stats = defaultdict(lambda: {'count': 0, 'total_payoff': 0.0, 'wins': 0, 'simulations_with_move': set()})
+    move_combination_stats = defaultdict(lambda: {'count': 0, 'total_user_payoff': 0.0, 'total_computer_payoff': 0.0})
+    
+    total_moves = 0
+    total_combinations = 0
+    
+    # Process each simulation
+    for sim_result in simulation_results:
+        move_history = sim_result.get('move_history', [])
+        user_won = sim_result.get('user_won', False)
+        sim_id = sim_result.get('simulation_id', '')
+        
+        # Track which simulations used which moves (for win rate calculation)
+        user_moves_in_sim = set()
+        computer_moves_in_sim = set()
+        
+        for move_round in move_history:
+            user_move_name = move_round.get('user_move_name', 'unknown')
+            computer_move_name = move_round.get('computer_move_name', 'unknown')
+            
+            # Update user move statistics
+            user_move_stats[user_move_name]['count'] += 1
+            user_moves_in_sim.add(user_move_name)
+            
+            # Update computer move statistics
+            computer_move_stats[computer_move_name]['count'] += 1
+            computer_moves_in_sim.add(computer_move_name)
+            
+            # Update move combination statistics
+            combo_key = f"({user_move_name}, {computer_move_name})"
+            move_combination_stats[combo_key]['count'] += 1
+            total_combinations += 1
+            
+            total_moves += 1
+        
+        # Update win rates: track wins per move
+        # For user moves: if user won the simulation, count as a win for user moves
+        # For computer moves: if computer won (user lost), count as a win for computer moves
+        if user_won:
+            for move_name in user_moves_in_sim:
+                user_move_stats[move_name]['wins'] += 1
+        else:
+            # User lost, so computer won - count as wins for computer moves
+            for move_name in computer_moves_in_sim:
+                computer_move_stats[move_name]['wins'] += 1
+        
+        # Track which simulations used each move
+        for move_name in user_moves_in_sim:
+            user_move_stats[move_name]['simulations_with_move'].add(sim_id)
+        for move_name in computer_moves_in_sim:
+            computer_move_stats[move_name]['simulations_with_move'].add(sim_id)
+    
+    # Calculate payoffs for each move (approximate using payoff matrix)
+    # For more accurate payoffs, we'd need round-by-round payoff data
+    # For now, we'll calculate average payoffs based on move combinations
+    for combo_key, combo_data in move_combination_stats.items():
+        # Extract move names from combo_key (format: "(user_move, computer_move)")
+        try:
+            moves = combo_key.strip('()').split(', ')
+            if len(moves) == 2:
+                user_move_name = moves[0]
+                computer_move_name = moves[1]
+                
+                # Find payoff from matrix
+                for entry in payoff_matrix:
+                    # Handle both dict and PayoffEntry object
+                    entry_user_move = entry.get('user_move_name') if isinstance(entry, dict) else getattr(entry, 'user_move_name', None)
+                    entry_computer_move = entry.get('computer_move_name') if isinstance(entry, dict) else getattr(entry, 'computer_move_name', None)
+                    
+                    if entry_user_move == user_move_name and entry_computer_move == computer_move_name:
+                        payoff = entry.get('payoff', {}) if isinstance(entry, dict) else getattr(entry, 'payoff', {})
+                        if isinstance(payoff, dict):
+                            combo_data['total_user_payoff'] += payoff.get('user', 0.0) * combo_data['count']
+                            combo_data['total_computer_payoff'] += payoff.get('computer', 0.0) * combo_data['count']
+                        break
+        except Exception:
+            pass
+    
+    # Aggregate user move payoffs from combinations
+    for combo_key, combo_data in move_combination_stats.items():
+        try:
+            moves = combo_key.strip('()').split(', ')
+            if len(moves) == 2:
+                user_move_name = moves[0]
+                if combo_data['count'] > 0:
+                    avg_payoff = combo_data['total_user_payoff'] / combo_data['count']
+                    user_move_stats[user_move_name]['total_payoff'] += avg_payoff * combo_data['count']
+        except Exception:
+            pass
+    
+    # Aggregate computer move payoffs from combinations
+    for combo_key, combo_data in move_combination_stats.items():
+        try:
+            moves = combo_key.strip('()').split(', ')
+            if len(moves) == 2:
+                computer_move_name = moves[1]
+                if combo_data['count'] > 0:
+                    avg_payoff = combo_data['total_computer_payoff'] / combo_data['count']
+                    computer_move_stats[computer_move_name]['total_payoff'] += avg_payoff * combo_data['count']
+        except Exception:
+            pass
+    
+    # Build final statistics
+    user_moves_result = {}
+    for move_name, stats in user_move_stats.items():
+        count = stats['count']
+        num_sims_with_move = len(stats['simulations_with_move'])
+        user_moves_result[move_name] = {
+            'frequency': count,
+            'frequency_percentage': (count / total_moves * 100) if total_moves > 0 else 0.0,
+            'average_payoff': (stats['total_payoff'] / count) if count > 0 else 0.0,
+            'win_rate': (stats['wins'] / num_sims_with_move * 100) if num_sims_with_move > 0 else 0.0,
+            'usage_count': num_sims_with_move  # Number of simulations that used this move
+        }
+    
+    computer_moves_result = {}
+    for move_name, stats in computer_move_stats.items():
+        count = stats['count']
+        num_sims_with_move = len(stats['simulations_with_move'])
+        computer_moves_result[move_name] = {
+            'frequency': count,
+            'frequency_percentage': (count / total_moves * 100) if total_moves > 0 else 0.0,
+            'average_payoff': (stats['total_payoff'] / count) if count > 0 else 0.0,
+            'win_rate': (stats['wins'] / num_sims_with_move * 100) if num_sims_with_move > 0 else 0.0,
+            'usage_count': num_sims_with_move
+        }
+    
+    move_combinations_result = {}
+    for combo_key, combo_data in move_combination_stats.items():
+        count = combo_data['count']
+        move_combinations_result[combo_key] = {
+            'frequency': count,
+            'frequency_percentage': (count / total_combinations * 100) if total_combinations > 0 else 0.0,
+            'average_user_payoff': (combo_data['total_user_payoff'] / count) if count > 0 else 0.0,
+            'average_computer_payoff': (combo_data['total_computer_payoff'] / count) if count > 0 else 0.0
+        }
+    
+    return {
+        'user_moves': user_moves_result,
+        'computer_moves': computer_moves_result,
+        'move_combinations': move_combinations_result,
+        'total_moves_analyzed': total_moves,
+        'total_combinations_analyzed': total_combinations
+    }
+
+
 def create_strategy_settings(
     strategy_type: str,
     user_moves: List[Move],
@@ -42,7 +229,7 @@ def create_strategy_settings(
     Args:
         strategy_type: Type of strategy ('copy_cat', 'tit_for_tat', 'grim_trigger', 'random', 'mixed')
         user_moves: List of available user moves
-        first_move_name: Name of the first move (if None, uses first cooperative move or first move)
+        first_move_name: Name of the first move (if None, randomly selects from cooperative moves or all moves)
         cooperation_start: Round when cooperation starts (for tit_for_tat, grim_trigger)
         mixed_strategy_array: Array of move names for mixed strategy (if None, uses all moves)
         
@@ -51,12 +238,20 @@ def create_strategy_settings(
     """
     # Determine first move if not specified
     if first_move_name is None:
-        # Try to find a cooperative move, otherwise use first move
+        # Randomly select from cooperative moves if available, otherwise randomly select from all moves
+        # This adds variation to simulations while maintaining preference for cooperative starts
         cooperative_moves = [move for move in user_moves if move.type == MoveType.COOPERATIVE]
         if cooperative_moves:
-            first_move_name = cooperative_moves[0].name
+            # Randomly select from cooperative moves
+            selected_move = np.random.choice(cooperative_moves)
+            first_move_name = selected_move.name
         else:
-            first_move_name = user_moves[0].name if user_moves else None
+            # No cooperative moves available, randomly select from all moves
+            if user_moves:
+                selected_move = np.random.choice(user_moves)
+                first_move_name = selected_move.name
+            else:
+                first_move_name = None
     
     # For mixed strategy, use all moves if array not provided
     if strategy_type == 'mixed' and mixed_strategy_array is None:
@@ -103,7 +298,8 @@ def run_single_simulation(
             'final_computer_payoff': float,
             'num_rounds': int,
             'user_won': bool,
-            'payoff_difference': float
+            'payoff_difference': float,
+            'move_history': List[Dict]  # List of moves played in each round for move-level analysis
         }
     """
     if simulation_id is None:
@@ -193,6 +389,21 @@ def run_single_simulation(
         user_won = bool(final_user_payoff > final_computer_payoff)
         payoff_difference = final_user_payoff - final_computer_payoff
         
+        # Extract move history for move-level analysis
+        move_history = []
+        if iteration_moves:
+            all_moves = iteration_moves.get_moves()
+            # We need to get payoffs per round, but we don't have that in iteration_moves
+            # So we'll just track move names for frequency analysis
+            # For payoff analysis, we'd need to recalculate or store during game play
+            for user_move, computer_move in all_moves:
+                move_history.append({
+                    'user_move_name': user_move.get('name', 'unknown') if isinstance(user_move, dict) else getattr(user_move, 'name', 'unknown'),
+                    'user_move_type': user_move.get('type', 'unknown') if isinstance(user_move, dict) else getattr(user_move, 'type', 'unknown'),
+                    'computer_move_name': computer_move.get('name', 'unknown') if isinstance(computer_move, dict) else getattr(computer_move, 'name', 'unknown'),
+                    'computer_move_type': computer_move.get('type', 'unknown') if isinstance(computer_move, dict) else getattr(computer_move, 'type', 'unknown')
+                })
+        
         return {
             'simulation_id': simulation_id,
             'user_strategy': user_strategy,
@@ -201,7 +412,8 @@ def run_single_simulation(
             'final_computer_payoff': float(final_computer_payoff),
             'num_rounds': actual_num_rounds,
             'user_won': user_won,
-            'payoff_difference': float(payoff_difference)
+            'payoff_difference': float(payoff_difference),
+            'move_history': move_history  # Add move history for analysis
         }
     except Exception as e:
         logger.error(f"Error in simulation {simulation_id}: {str(e)}")
@@ -256,7 +468,12 @@ def run_simulation_suite(
                     'average_payoff_difference': float,
                     'win_rate': float,  # Percentage of simulations where user won
                     'std_user_payoff': float,  # Standard deviation of user payoffs
-                    'std_computer_payoff': float  # Standard deviation of computer payoffs
+                    'std_computer_payoff': float,  # Standard deviation of computer payoffs
+                    'move_statistics': {
+                        'user_moves': {move_name: {frequency, frequency_percentage, average_payoff, win_rate, usage_count}},
+                        'computer_moves': {move_name: {frequency, frequency_percentage, average_payoff, win_rate, usage_count}},
+                        'move_combinations': {combo_key: {frequency, frequency_percentage, average_user_payoff, average_computer_payoff}}
+                    }  # Move-level statistics for histograms
                 },
                 ...
             ],
@@ -348,6 +565,9 @@ def run_simulation_suite(
             std_computer_payoff = float(np.std(computer_payoffs))
             win_rate = float(np.mean(wins) * 100)
             
+            # Calculate move-level statistics for histograms
+            move_stats = calculate_move_statistics(strategy_results, base_game_config['payoff_matrix'])
+            
             all_results.append({
                 'user_strategy': strategy,
                 'simulations': strategy_results,  # Note: contains all simulation results (may be large)
@@ -359,7 +579,8 @@ def run_simulation_suite(
                 'std_computer_payoff': std_computer_payoff,
                 'num_successful_simulations': len(strategy_results),
                 'num_failed_simulations': len(failed_simulations),
-                'failed_simulations': failed_simulations  # Include error details
+                'failed_simulations': failed_simulations,  # Include error details
+                'move_statistics': move_stats  # Add move-level statistics for histograms
             })
         else:
             logger.error(f"No successful simulations for strategy: {strategy}")

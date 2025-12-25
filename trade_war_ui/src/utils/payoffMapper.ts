@@ -90,6 +90,13 @@ export function getPayoffForMove(
   );
   
   if (!userEntry || !computerEntry) {
+    // Enhanced debugging
+    if (!userEntry) {
+      console.debug(`[getPayoffForMove] Missing user entry: ${userCountry} playing "${userMoveDataName}" against ${computerCountry}`);
+    }
+    if (!computerEntry) {
+      console.debug(`[getPayoffForMove] Missing computer entry: ${computerCountry} playing "${computerMoveDataName}" against ${userCountry}`);
+    }
     return null;
   }
   
@@ -118,20 +125,34 @@ export function buildPayoffMatrix(
     payoff: { user: number; computer: number };
   }> = [];
   
+  // Debug: Log the inputs
+  console.log('[buildPayoffMatrix] Building payoff matrix:', {
+    userCountry,
+    computerCountry,
+    userMoves,
+    computerMoves,
+    totalCombinations: userMoves.length * computerMoves.length
+  });
+  
+  let foundCount = 0;
+  let missingCount = 0;
+  
   for (const userMove of userMoves) {
     for (const computerMove of computerMoves) {
       const payoff = getPayoffForMove(userCountry, computerCountry, userMove, computerMove);
       
       if (payoff) {
+        foundCount++;
         payoffMatrix.push({
           user_move_name: userMove,
           computer_move_name: computerMove,
           payoff,
         });
       } else {
+        missingCount++;
         // Fallback: use default payoffs if data not found
         console.warn(
-          `Payoff not found for ${userCountry} (${userMove}) vs ${computerCountry} (${computerMove}), using defaults`
+          `[buildPayoffMatrix] Payoff not found for ${userCountry} (${userMove}) vs ${computerCountry} (${computerMove}), using defaults (2, 2)`
         );
         payoffMatrix.push({
           user_move_name: userMove,
@@ -141,6 +162,8 @@ export function buildPayoffMatrix(
       }
     }
   }
+  
+  console.log(`[buildPayoffMatrix] Result: ${foundCount} found, ${missingCount} missing (using defaults)`);
   
   return payoffMatrix;
 }
@@ -155,7 +178,9 @@ export function countryPairExists(
   const entries = (payoffData as PayoffEntry[]).filter(
     entry => entry.player === userCountry && entry.opponent === computerCountry
   );
-  return entries.length > 0;
+  const exists = entries.length > 0;
+  console.log(`[countryPairExists] Checking ${userCountry} vs ${computerCountry}: ${exists ? 'EXISTS' : 'NOT FOUND'} (${entries.length} entries)`);
+  return exists;
 }
 
 /**
