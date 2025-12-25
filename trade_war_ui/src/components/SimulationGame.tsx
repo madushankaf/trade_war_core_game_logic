@@ -212,12 +212,12 @@ const MoveHistograms: React.FC<{ moveStatistics: MoveStatistics }> = ({ moveStat
               />
               <YAxis domain={[0, 100]} />
               <Tooltip 
-                formatter={(value: any, name: string) => {
+                formatter={(value: any, name?: string) => {
                   if (name === 'winRate') {
                     const item = userMovesWinRateData.find(d => d.winRate === value);
                     return [`${value.toFixed(1)}% (used in ${item?.usageCount} simulations)`, 'Win Rate'];
                   }
-                  return [value, name];
+                  return [value, name ?? ''];
                 }}
               />
               <Legend />
@@ -249,12 +249,12 @@ const MoveHistograms: React.FC<{ moveStatistics: MoveStatistics }> = ({ moveStat
               />
               <YAxis />
               <Tooltip 
-                formatter={(value: any, name: string) => {
+                formatter={(value: any, name?: string) => {
                   if (name === 'frequency') {
                     const item = computerMovesFrequencyData.find(d => d.frequency === value);
                     return [`${value} (${item?.percentage}%)`, 'Frequency'];
                   }
-                  return [value, name];
+                  return [value, name ?? ''];
                 }}
               />
               <Legend />
@@ -286,12 +286,12 @@ const MoveHistograms: React.FC<{ moveStatistics: MoveStatistics }> = ({ moveStat
               />
               <YAxis domain={[0, 100]} />
               <Tooltip 
-                formatter={(value: any, name: string) => {
+                formatter={(value: any, name?: string) => {
                   if (name === 'winRate') {
                     const item = computerMovesWinRateData.find(d => d.winRate === value);
                     return [`${value.toFixed(1)}% (used in ${item?.usageCount} simulations)`, 'Win Rate'];
                   }
-                  return [value, name];
+                  return [value, name ?? ''];
                 }}
               />
               <Legend />
