@@ -1,5 +1,5 @@
 {
-  "states": ["hawkish", "dovish", "opportunistic", "neutral"],
+  "states": ["hawkish", "dovish", "opportunist", "neutral"],
   "transition_matrix_p0": {
     "from_hawkish": { "to_hawkish": 0.1, "to_dovish": 0.6, "to_opportunistic": 0.2, "to_neutral": 0.1 },
     "from_dovish": { "to_hawkish": 0.4, "to_dovish": 0.1, "to_opportunistic": 0.4, "to_neutral": 0.1 },
@@ -43,6 +43,14 @@
     "opportunist": { "beta": 1.1, "alpha_at_end": 0.95 },
     "isolationist": { "beta": 1.2, "alpha_at_end": 0.92 },
     "neutralist": { "beta": 1.1, "alpha_at_end": 0.93 }
+  },
+  "states_to_move_mapping": {
+    "open_dialogue": ["dovish"],
+    "sanction": ["hawkish", "opportunist"],
+    "raise_tariffs": ["hawkish"],
+    "wait_and_see": ["neutral", "dovish"],
+    "subsidize_export": ["opportunist"],
+    "impose_quota": ["hawkish"]
   }
 }
 

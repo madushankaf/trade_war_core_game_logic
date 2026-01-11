@@ -6,6 +6,7 @@ import nashpy as nash
 from scipy.optimize import linprog
 from game_logger import get_game_logger, get_noop_game_logger
 import random
+from markov_chain import get_next_state, get_next_move_based_on_markov_chain
 
 # Phase boundaries (deprecated - now calculated from percentages)
 # Kept for backward compatibility
@@ -906,6 +907,60 @@ def play_game_round(game: dict, round_idx: int) -> Tuple[dict, dict]:
         computer_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon, game['payoff_matrix'])
         if computer_move is None:
             computer_move = get_a_random_move(game['computer_moves'])
+
+    game['state']['last_computer_move'] = computer_move
+    game['state']['round_idx'] = round_idx
+
+    # Respond to user's dominant move with mixed strategy:
+    # - 60% of the time: play best response
+    # - 20% of the time: play security level strategy (safe/defensive)
+    # - 20% of the time: play normal (keep original move)
+    user_dominant = check_dominant_move(game['user_moves'], game['computer_moves'], game['payoff_matrix'])
+    if user_dominant and user_move == user_dominant:
+        rand = random.random()
+        if rand < 0.6:  # 60% - play best response
+            best_response = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon=0.0, payoff_matrix=game['payoff_matrix'])
+            computer_move = best_response if best_response else computer_move
+            game['state']['last_computer_move'] = computer_move
+        elif rand < 0.8:  # 20% - play security level strategy (0.6 to 0.8 = 20%)
+            security_level_response = get_security_level_strategy(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
+            computer_move = security_level_response if security_level_response else computer_move
+            game['state']['last_computer_move'] = computer_move
+        # else: 20% - play normal (keep original computer_move, already set above)
+
+    return user_move, computer_move
+
+def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict, dict]:
+    """
+    Play a single round of the game.
+    Returns the user move and computer move for the round.
+    """
+    computer_profile = game['computer_profile']
+    if computer_profile is None:
+        raise ValueError("Computer profile is not set")
+    
+    if round_idx == 0:
+        game['state']['last_computer_move'] = None
+        game['state']['round_idx'] = 0
+        game['state']['last_strategy_update'] = 0
+        game['state']['generated_mixed_moves_array'] = None
+        game['state']['equalizer_strategy'] = None
+        # Reset grim trigger state at the start of a new game
+        game['state']['grim_triggered'] = False
+
+        
+    user_move = get_next_move_based_on_strategy_settings(game, game['state']['last_computer_move'], round_idx)
+    if user_move is None:
+        print(f"User move is None, getting a random move")
+        user_move = get_a_random_move(game['user_moves'])
+
+
+    next_markov_move = get_next_move_based_on_markov_chain(game['state']['last_computer_move']['name'], game['computer_profile']['type'], round_idx)
+    if next_markov_move is None:
+        print(f"Next markov move is None, getting a random move")
+        next_markov_move = get_a_random_move(game['computer_moves'])
+
+    computer_move = next_markov_move
 
     game['state']['last_computer_move'] = computer_move
     game['state']['round_idx'] = round_idx

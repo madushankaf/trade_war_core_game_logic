@@ -1,7 +1,7 @@
 import numpy as np
 import json
 import os
-
+from typing import Optional
 # Load data from markov_states.json
 _JSON_PATH = os.path.join(os.path.dirname(__file__), "markov_states.json")
 with open(_JSON_PATH, "r") as f:
@@ -45,6 +45,15 @@ for actor_type, json_matrix in _JSON_DATA["p_inf_by_type"].items():
 ACTOR_TYPE_PARAMS = {}
 for actor_type, params in _JSON_DATA["actor_type_params"].items():
     ACTOR_TYPE_PARAMS[actor_type] = params.copy()
+
+# Load states_to_move_mapping and create reverse mapping (state -> list of moves)
+STATES_TO_MOVE_MAPPING = _JSON_DATA.get("states_to_move_mapping", {})
+STATE_TO_MOVES = {}  # Reverse mapping: state -> list of moves
+for move_name, states_list in STATES_TO_MOVE_MAPPING.items():
+    for state in states_list:
+        if state not in STATE_TO_MOVES:
+            STATE_TO_MOVES[state] = []
+        STATE_TO_MOVES[state].append(move_name)
 
 def alpha(t: int, tau: float, beta: float = 1.0) -> float:
     """
@@ -122,3 +131,83 @@ def get_next_state(current_state: str, actor_type: str, round_num: int, rng=None
     next_state = IDX_TO_STATE[next_idx]
     
     return next_state
+
+
+def get_next_move_based_on_markov_chain(current_move: str, actor_type: str, round_num: int, rng=None) -> Optional[str]:
+    """
+    Get the next move based on the current move, actor type, and round number.
+    
+    This function:
+    1. Maps the input move to the corresponding Markov state(s)
+    2. Randomly selects one state if multiple states map to the move
+    3. Uses that state as the current state for the Markov chain transition
+    4. Returns the move corresponding to the next state
+    
+    Args:
+        current_move: Current move name (must be in STATES_TO_MOVE_MAPPING)
+        actor_type: Actor type (must be in ACTOR_TYPE_PARAMS)
+        round_num: Round number
+        rng: Optional numpy random number generator (default_rng instance)
+    
+    Returns:
+        Move name (string) corresponding to the next state, or None if no mapping exists
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    
+    # Map the move to the corresponding Markov state(s)
+    if current_move not in STATES_TO_MOVE_MAPPING:
+        # Move not in mapping, return None
+        return None
+    
+    possible_states = STATES_TO_MOVE_MAPPING[current_move]
+    if not possible_states:
+        # No states mapped to this move, return None
+        return None
+    
+    # Normalize state names to handle inconsistencies (e.g., "opportunist" vs "opportunistic")
+    # Check if we need to map "opportunist" to "opportunistic" or vice versa
+    normalized_states = []
+    for s in possible_states:
+        if s in STATE_TO_IDX:
+            normalized_states.append(s)
+        elif s == "opportunist" and "opportunistic" in STATE_TO_IDX:
+            # Map "opportunist" to "opportunistic" if it exists
+            normalized_states.append("opportunistic")
+        elif s == "opportunistic" and "opportunist" in STATE_TO_IDX:
+            # Map "opportunistic" to "opportunist" if it exists
+            normalized_states.append("opportunist")
+    
+    if not normalized_states:
+        # No valid states found, return None
+        return None
+    
+    # If multiple valid states map to this move, randomly select one
+    # Otherwise, use the single state
+    if len(normalized_states) == 1:
+        current_state = normalized_states[0]
+    else:
+        current_state = rng.choice(normalized_states)
+    
+    # Get the next state from the Markov chain using the mapped state
+    # Wrap in try-except to handle cases where transition probabilities are invalid
+    # (but let KeyError propagate for invalid actor types or states)
+    try:
+        next_state = get_next_state(current_state, actor_type, round_num, rng)
+    except ValueError as e:
+        # If we can't get the next state due to invalid probabilities, return None
+        return None
+    
+    # Map the next state to a move using the states_to_move_mapping
+    if next_state in STATE_TO_MOVES:
+        available_moves = STATE_TO_MOVES[next_state]
+        if available_moves:
+            # Randomly select one of the moves associated with this state
+            selected_move = rng.choice(available_moves)
+            return selected_move
+        else:
+            # No moves available for this state, return the state as fallback
+            return next_state
+    else:
+        # State not in mapping, return None
+        return None
