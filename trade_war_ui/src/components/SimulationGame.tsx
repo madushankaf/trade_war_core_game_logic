@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -332,7 +332,7 @@ const StrategyRow: React.FC<{
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Chip 
               label={result.user_strategy} 
-              color={result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
+              color={simulationResults?.summary?.best_strategy && result.user_strategy === simulationResults.summary.best_strategy ? 'primary' : 'default'}
             />
             {result.move_statistics && (
               <IconButton
@@ -393,6 +393,20 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [simulationResults, setSimulationResults] = useState<SimulationSuiteResponse | null>(null);
+  const [partialResults, setPartialResults] = useState<SimulationResult[]>([]); // Track partial results in real-time
+  const [simulationStats, setSimulationStats] = useState<{
+    totalCompleted: number;
+    currentStrategy: string;
+    currentSimulation: number;
+    totalSimulations: number;
+    recentResults: any[];
+  }>({
+    totalCompleted: 0,
+    currentStrategy: '',
+    currentSimulation: 0,
+    totalSimulations: 0,
+    recentResults: []
+  });
   const [numSimulations, setNumSimulations] = useState<number>(100); // Default to 100 for faster testing
   const [roundsMean, setRoundsMean] = useState<number>(15);
   const [roundsMin, setRoundsMin] = useState<number>(5);
@@ -413,6 +427,59 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
     { value: 'random', label: 'Random' },
     { value: 'mixed', label: 'Mixed Strategy' }
   ];
+
+  // Helper to get display results (prioritize partial results during loading for real-time updates)
+  const getDisplayResults = (): SimulationResult[] => {
+    // During loading, show partial results for real-time updates
+    // After loading completes, show final results
+    if (loading && partialResults.length > 0) {
+      console.log('📊 getDisplayResults: Returning', partialResults.length, 'partial results during loading');
+      return partialResults;
+    }
+    if (simulationResults) {
+      console.log('📊 getDisplayResults: Returning', simulationResults.results.length, 'final results');
+      return simulationResults.results;
+    }
+    if (partialResults.length > 0) {
+      console.log('📊 getDisplayResults: Returning', partialResults.length, 'partial results (no final yet)');
+      return partialResults;
+    }
+    console.log('📊 getDisplayResults: No results available');
+    return [];
+  };
+
+  // Helper to get display summary (prioritize partial during loading for real-time updates)
+  const getDisplaySummary = () => {
+    // During loading, calculate summary from partial results for real-time updates
+    if (loading && partialResults.length > 0) {
+      const bestStrategy = partialResults.reduce((best, current) => 
+        current.average_user_payoff > best.average_user_payoff ? current : best
+      );
+      const mostWins = partialResults.reduce((best, current) => 
+        current.win_rate > best.win_rate ? current : best
+      );
+      return {
+        best_strategy: bestStrategy.user_strategy,
+        most_wins: mostWins.user_strategy,
+        worst_strategy: partialResults.reduce((worst, current) => 
+          current.average_user_payoff < worst.average_user_payoff ? current : worst
+        ).user_strategy
+      };
+    }
+    // After loading, use final results summary
+    if (simulationResults) {
+      return simulationResults.summary;
+    }
+    return null;
+  };
+
+  // Auto-advance to results step when partial results arrive
+  useEffect(() => {
+    if (partialResults.length > 0 && activeStep < 2) {
+      console.log('📊 useEffect: Advancing to results step, partial results:', partialResults.length);
+      setActiveStep(2);
+    }
+  }, [partialResults.length, activeStep]);
 
   // Update available moves when countries are selected
   React.useEffect(() => {
@@ -524,7 +591,15 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
     setLoading(true);
     setError(null);
     setSimulationResults(null);
+    setPartialResults([]); // Reset partial results
     setSimulationProgress(null);
+    setSimulationStats({
+      totalCompleted: 0,
+      currentStrategy: '',
+      currentSimulation: 0,
+      totalSimulations: 0,
+      recentResults: []
+    });
 
     try {
       const gameData = buildGameData();
@@ -559,6 +634,54 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
             setSimulationProgress({
               message: 'Simulation started...'
             });
+          } else if (progress.type === 'single_simulation_complete') {
+            // Handle per-simulation completion for real-time updates
+            console.log('📊 Single simulation completed:', progress);
+            setSimulationStats(prev => ({
+              ...prev,
+              totalCompleted: prev.totalCompleted + 1,
+              recentResults: [...prev.recentResults.slice(-9), {
+                strategy: progress.user_strategy,
+                user_payoff: progress.final_user_payoff,
+                computer_payoff: progress.final_computer_payoff,
+                user_won: progress.user_won,
+                num_rounds: progress.num_rounds
+              }]
+            }));
+          } else if (progress.type === 'round_update') {
+            // Handle per-round updates during simulations
+            console.log('📊 Round update:', progress);
+            // Update current simulation progress
+            if (progress.round) {
+              setSimulationStats(prev => ({
+                ...prev,
+                currentSimulation: progress.round
+              }));
+            }
+          } else if (progress.type === 'strategy_result') {
+            // Handle partial strategy results in real-time
+            const strategyResult = progress.strategy_result;
+            console.log('📊 Strategy result received:', strategyResult.user_strategy, strategyResult);
+            setPartialResults(prev => {
+              // Update or add the strategy result
+              const existingIndex = prev.findIndex(r => r.user_strategy === strategyResult.user_strategy);
+              if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = strategyResult;
+                console.log('📊 Updated partial results, total:', updated.length);
+                return updated;
+              } else {
+                const newResults = [...prev, strategyResult];
+                console.log('📊 Added to partial results, total:', newResults.length);
+                return newResults;
+              }
+            });
+            // Note: Step advancement is handled by useEffect when partialResults changes
+            // This ensures we always advance even if the callback has stale state
+          } else if (progress.type === 'complete') {
+            // Final results received - keep loading state until promise resolves
+            // Don't clear progress yet, let the promise handler do it
+            console.log('📊 Simulation complete event received');
           }
         },
         // Error callback
@@ -568,7 +691,14 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
         }
       );
 
-      setSimulationResults(results);
+      // Only set final results if we don't already have them from partial updates
+      // This ensures partial results are shown in real-time
+      if (!simulationResults || partialResults.length === 0) {
+        setSimulationResults(results);
+      } else {
+        // Merge final results with any partial results that might have been missed
+        setSimulationResults(results);
+      }
       setSimulationProgress(null);
       setActiveStep(2);
       setLoading(false);
@@ -792,21 +922,44 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
               </Button>
             </Box>
 
-            {loading && (
-              <Box sx={{ mt: 3 }}>
-                <LinearProgress 
-                  variant={simulationProgress?.progressPercentage !== undefined ? "determinate" : "indeterminate"}
-                  value={simulationProgress?.progressPercentage || 0}
-                  sx={{ height: 8 }} 
-                />
-                <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
-                  {simulationProgress?.message || `Running ${numSimulations} simulations per strategy. This may take a while...`}
-                </Typography>
-                {simulationProgress?.currentStrategy && (
-                  <Typography variant="body2" sx={{ mt: 0.5, textAlign: 'center', color: 'text.secondary' }}>
-                    Strategy {simulationProgress.strategyIndex} of {simulationProgress.totalStrategies}: {simulationProgress.currentStrategy}
-                    {simulationProgress.progressPercentage !== undefined && ` (${simulationProgress.progressPercentage.toFixed(1)}%)`}
-                  </Typography>
+            {loading && activeStep < 2 && (
+              <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                {simulationProgress ? (
+                  <>
+                    <LinearProgress 
+                      variant={simulationProgress.progressPercentage !== undefined ? "determinate" : "indeterminate"}
+                      value={simulationProgress.progressPercentage || 0}
+                      sx={{ height: 10, mb: 1.5, borderRadius: 1 }} 
+                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        {simulationProgress.message || `Running ${numSimulations} simulations per strategy...`}
+                      </Typography>
+                      {simulationProgress.progressPercentage !== undefined && (
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                          {simulationProgress.progressPercentage.toFixed(1)}%
+                        </Typography>
+                      )}
+                    </Box>
+                    {simulationProgress.currentStrategy && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                        Current Strategy: <strong>{simulationProgress.currentStrategy}</strong>
+                        {simulationProgress.strategyIndex && simulationProgress.totalStrategies && (
+                          <> ({simulationProgress.strategyIndex} of {simulationProgress.totalStrategies})</>
+                        )}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" sx={{ color: 'info.main', display: 'block', mt: 1, fontStyle: 'italic' }}>
+                      Note: Each simulation is a full game with multiple rounds. Progress shows simulations completed, not rounds.
+                    </Typography>
+                  </>
+                ) : (
+                  <Box>
+                    <LinearProgress sx={{ height: 10, mb: 1.5, borderRadius: 1 }} />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Starting simulation... Running {numSimulations} simulations per strategy.
+                    </Typography>
+                  </Box>
                 )}
               </Box>
             )}
@@ -814,25 +967,126 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
         </Card>
       )}
 
-      {/* Step 2: View Results */}
-      {activeStep === 2 && simulationResults && (
+      {/* Step 2: View Results - Show partial results in real-time */}
+      {(() => {
+        const shouldShow = activeStep === 2 && (simulationResults || partialResults.length > 0);
+        if (shouldShow) {
+          console.log('📊 Rendering results view:', {
+            activeStep,
+            hasSimulationResults: !!simulationResults,
+            partialResultsCount: partialResults.length,
+            loading,
+            displayResultsCount: getDisplayResults().length
+          });
+        }
+        return shouldShow;
+      })() && (
         <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
           <CardContent sx={{ flex: 1, overflow: 'auto' }}>
-            <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-              Simulation Results
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Typography variant="h5">
+                Simulation Results
+              </Typography>
+              {loading && (
+                <Chip 
+                  label={partialResults.length > 0 ? "🟢 Live Updates" : "⏳ Running..."} 
+                  color={partialResults.length > 0 ? "success" : "warning"} 
+                  size="small"
+                  sx={{ fontWeight: 'bold' }}
+                />
+              )}
+            </Box>
+            
+            {/* Show progress bar at top when loading - always visible during simulation */}
+            {loading && (
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                {simulationProgress ? (
+                  <>
+                    <LinearProgress 
+                      variant={simulationProgress.progressPercentage !== undefined ? "determinate" : "indeterminate"}
+                      value={simulationProgress.progressPercentage || 0}
+                      sx={{ height: 10, mb: 1.5, borderRadius: 1 }} 
+                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        {simulationProgress.message || 'Running simulations...'}
+                      </Typography>
+                      {simulationProgress.progressPercentage !== undefined && (
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                          {simulationProgress.progressPercentage.toFixed(1)}%
+                        </Typography>
+                      )}
+                    </Box>
+                    {simulationProgress.currentStrategy && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                        Current Strategy: <strong>{simulationProgress.currentStrategy}</strong>
+                        {simulationProgress.strategyIndex && simulationProgress.totalStrategies && (
+                          <> ({simulationProgress.strategyIndex} of {simulationProgress.totalStrategies})</>
+                        )}
+                      </Typography>
+                    )}
+                    {partialResults.length > 0 && (
+                      <Typography variant="caption" sx={{ color: 'success.main', display: 'block', mt: 0.5, fontWeight: 'bold' }}>
+                        ✓ {partialResults.length} strategy{partialResults.length !== 1 ? 'ies' : 'y'} completed
+                      </Typography>
+                    )}
+                    {simulationStats.totalCompleted > 0 && (
+                      <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
+                          📊 Real-time Stats:
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block' }}>
+                          • {simulationStats.totalCompleted} simulation{simulationStats.totalCompleted !== 1 ? 's' : ''} completed
+                        </Typography>
+                        {simulationStats.currentStrategy && (
+                          <Typography variant="caption" sx={{ display: 'block' }}>
+                            • Current: {simulationStats.currentStrategy}
+                          </Typography>
+                        )}
+                        {simulationStats.recentResults.length > 0 && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                            • Latest: {simulationStats.recentResults[simulationStats.recentResults.length - 1].strategy} 
+                            ({simulationStats.recentResults[simulationStats.recentResults.length - 1].user_won ? 'Won' : 'Lost'})
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                    <Typography variant="caption" sx={{ color: 'info.main', display: 'block', mt: 1, fontStyle: 'italic' }}>
+                      📊 Progress is per simulation (each simulation is a full game with multiple rounds)
+                    </Typography>
+                  </>
+                ) : (
+                  <Box>
+                    <LinearProgress sx={{ height: 10, mb: 1.5, borderRadius: 1 }} />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Starting simulation...
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
 
             {/* Summary */}
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>Summary</Typography>
-              <Typography>Computer Profile: <strong>{simulationResults.computer_profile}</strong></Typography>
-              <Typography>Simulations per Strategy: <strong>{simulationResults.num_simulations}</strong></Typography>
-              <Typography>Best Strategy: <strong>{simulationResults.summary.best_strategy}</strong></Typography>
-              <Typography>Most Wins: <strong>{simulationResults.summary.most_wins}</strong></Typography>
-              <Typography>Rounds Distribution: Mean={simulationResults.rounds_statistics.mean.toFixed(1)}, 
-                Std={simulationResults.rounds_statistics.std.toFixed(1)}, 
-                Range=[{simulationResults.rounds_statistics.min}, {simulationResults.rounds_statistics.max}]
+            <Alert severity={loading ? "warning" : "info"} sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Summary {loading && partialResults.length > 0 && "(Partial Results - Updating...)"}
               </Typography>
+              {simulationResults && (
+                <>
+                  <Typography>Computer Profile: <strong>{simulationResults.computer_profile}</strong></Typography>
+                  <Typography>Simulations per Strategy: <strong>{simulationResults.num_simulations}</strong></Typography>
+                  <Typography>Rounds Distribution: Mean={simulationResults.rounds_statistics.mean.toFixed(1)}, 
+                    Std={simulationResults.rounds_statistics.std.toFixed(1)}, 
+                    Range=[{simulationResults.rounds_statistics.min}, {simulationResults.rounds_statistics.max}]
+                  </Typography>
+                </>
+              )}
+              {getDisplaySummary() && (
+                <>
+                  <Typography>Best Strategy: <strong>{getDisplaySummary()?.best_strategy}</strong></Typography>
+                  <Typography>Most Wins: <strong>{getDisplaySummary()?.most_wins}</strong></Typography>
+                </>
+              )}
             </Alert>
 
             {/* Results Table */}
@@ -851,11 +1105,17 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {simulationResults.results.map((result) => (
+                  {getDisplayResults().map((result) => (
                     <StrategyRow
                       key={result.user_strategy}
                       result={result}
-                      simulationResults={simulationResults}
+                      simulationResults={simulationResults || {
+                        computer_profile: selectedProfile,
+                        num_simulations: numSimulations,
+                        rounds_statistics: { mean: roundsMean, std: 0, min: roundsMin, max: roundsMax },
+                        results: getDisplayResults(),
+                        summary: getDisplaySummary() || { best_strategy: '', worst_strategy: '', most_wins: '' }
+                      }}
                       expanded={expandedStrategies[result.user_strategy] || false}
                       onToggle={() => setExpandedStrategies(prev => ({
                         ...prev,
@@ -868,12 +1128,12 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
             </TableContainer>
 
             {/* Failed Simulations Errors Section */}
-            {simulationResults.results.some(r => r.num_failed_simulations && r.num_failed_simulations > 0) && (
+            {getDisplayResults().some(r => r.num_failed_simulations && r.num_failed_simulations > 0) && (
               <Box sx={{ mt: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
                   <ErrorIcon /> Failed Simulations - Error Details
                 </Typography>
-                {simulationResults.results.map((result) => {
+                {getDisplayResults().map((result) => {
                   if (!result.failed_simulations || result.failed_simulations.length === 0) {
                     return null;
                   }

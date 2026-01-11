@@ -382,6 +382,27 @@ export const gameApi = {
               }
             });
             
+            socket.on('simulation_strategy_result', (data: any) => {
+              console.log('Strategy result received:', data);
+              if (onProgress) {
+                onProgress({ type: 'strategy_result', ...data });
+              }
+            });
+            
+            socket.on('simulation_single_complete', (data: any) => {
+              console.log('📊 Single simulation completed:', data);
+              if (onProgress) {
+                onProgress({ type: 'single_simulation_complete', ...data });
+              }
+            });
+            
+            socket.on('game_update', (data: any) => {
+              console.log('📊 Round update during simulation:', data);
+              if (onProgress) {
+                onProgress({ type: 'round_update', ...data });
+              }
+            });
+            
             socket.on('simulation_complete', (data: any) => {
               console.log('Simulation completed:', data);
               if (onProgress) {

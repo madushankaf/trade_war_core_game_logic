@@ -1,0 +1,48 @@
+{
+  "states": ["hawkish", "dovish", "opportunistic", "neutral"],
+  "transition_matrix_p0": {
+    "from_hawkish": { "to_hawkish": 0.1, "to_dovish": 0.6, "to_opportunistic": 0.2, "to_neutral": 0.1 },
+    "from_dovish": { "to_hawkish": 0.4, "to_dovish": 0.1, "to_opportunistic": 0.4, "to_neutral": 0.1 },
+    "from_opportunistic": { "to_hawkish": 0.3, "to_dovish": 0.3, "to_opportunistic": 0.1, "to_neutral": 0.3 },
+    "from_neutral": { "to_hawkish": 0.25, "to_dovish": 0.25, "to_opportunistic": 0.25, "to_neutral": 0.25 }
+  },
+  "transition_matrix_p0_inf_default": {
+    "from_hawkish": { "to_hawkish": 0.05, "to_dovish": 0.85, "to_opportunistic": 0.05, "to_neutral": 0.05 },
+    "from_dovish": { "to_hawkish": 0.02, "to_dovish": 0.93, "to_opportunistic": 0.03, "to_neutral": 0.02 },
+    "from_opportunistic": { "to_hawkish": 0.03, "to_dovish": 0.87, "to_opportunistic": 0.05, "to_neutral": 0.05 },
+    "from_neutral": { "to_hawkish": 0.03, "to_dovish": 0.84, "to_opportunistic": 0.06, "to_neutral": 0.07 }
+  },
+  "p_inf_by_type": {
+    "aggressive": {
+      "from_hawkish": { "to_hawkish": 0.1, "to_dovish": 0.75, "to_opportunistic": 0.1, "to_neutral": 0.05 },
+      "from_dovish": { "to_hawkish": 0.03, "to_dovish": 0.9, "to_opportunistic": 0.04, "to_neutral": 0.03 },
+      "from_opportunistic": { "to_hawkish": 0.05, "to_dovish": 0.8, "to_opportunistic": 0.1, "to_neutral": 0.05 },
+      "from_neutral": { "to_hawkish": 0.05, "to_dovish": 0.78, "to_opportunistic": 0.07, "to_neutral": 0.1 }
+    },
+    "opportunist": {
+      "from_hawkish": { "to_hawkish": 0.05, "to_dovish": 0.85, "to_opportunistic": 0.05, "to_neutral": 0.05 },
+      "from_dovish": { "to_hawkish": 0.02, "to_dovish": 0.93, "to_opportunistic": 0.03, "to_neutral": 0.02 },
+      "from_opportunistic": { "to_hawkish": 0.03, "to_dovish": 0.88, "to_opportunistic": 0.05, "to_neutral": 0.04 },
+      "from_neutral": { "to_hawkish": 0.03, "to_dovish": 0.85, "to_opportunistic": 0.05, "to_neutral": 0.07 }
+    },
+    "isolationist": {
+      "from_hawkish": { "to_hawkish": 0.03, "to_dovish": 0.9, "to_opportunistic": 0.04, "to_neutral": 0.03 },
+      "from_dovish": { "to_hawkish": 0.01, "to_dovish": 0.96, "to_opportunistic": 0.02, "to_neutral": 0.01 },
+      "from_opportunistic": { "to_hawkish": 0.02, "to_dovish": 0.91, "to_opportunistic": 0.04, "to_neutral": 0.03 },
+      "from_neutral": { "to_hawkish": 0.02, "to_dovish": 0.9, "to_opportunistic": 0.03, "to_neutral": 0.05 }
+    },
+    "neutralist": {
+      "from_hawkish": { "to_hawkish": 0.1, "to_dovish": 0.6, "to_opportunistic": 0.2, "to_neutral": 0.1 },
+      "from_dovish": { "to_hawkish": 0.4, "to_dovish": 0.1, "to_opportunistic": 0.4, "to_neutral": 0.1 },
+      "from_opportunistic": { "to_hawkish": 0.3, "to_dovish": 0.3, "to_opportunistic": 0.1, "to_neutral": 0.3 },
+      "from_neutral": { "to_hawkish": 0.25, "to_dovish": 0.25, "to_opportunistic": 0.25, "to_neutral": 0.25 }
+    }
+  },
+  "actor_type_params": {
+    "aggressive": { "beta": 1.2, "alpha_at_end": 0.9 },
+    "opportunist": { "beta": 1.1, "alpha_at_end": 0.95 },
+    "isolationist": { "beta": 1.2, "alpha_at_end": 0.92 },
+    "neutralist": { "beta": 1.1, "alpha_at_end": 0.93 }
+  }
+}
+

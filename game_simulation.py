@@ -281,7 +281,9 @@ def run_single_simulation(
     computer_profile_name: str,
     profile_manager: ProfileManager,
     num_rounds: Optional[int] = None,
-    simulation_id: Optional[str] = None
+    simulation_id: Optional[str] = None,
+    socketio=None,
+    suite_simulation_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Run a single simulation: one user strategy against the computer profile.
@@ -390,7 +392,15 @@ def run_single_simulation(
     # Run the game (disable logging for simulations to improve performance and reduce log size)
     logger.info(f"Running simulation {simulation_id}: {user_strategy} vs {computer_profile_name}")
     try:
-        result, iteration_moves = play_full_game(game_dict, socketio=None, game_id=simulation_id, round_delay=0.0, enable_logging=False)
+        # Pass socketio if available for real-time updates during simulation
+        # Use suite_simulation_id as the room ID so all updates go to the suite room
+        result, iteration_moves = play_full_game(
+            game_dict, 
+            socketio=socketio, 
+            game_id=suite_simulation_id or simulation_id, 
+            round_delay=0.0, 
+            enable_logging=False
+        )
         
         final_user_payoff = result.get('final_user_payoff', 0.0)
         final_computer_payoff = result.get('final_computer_payoff', 0.0)
@@ -431,6 +441,20 @@ def run_single_simulation(
         # Debug logging for move extraction
         if computer_moves_in_history:
             logger.debug(f"Simulation {simulation_id}: Found {len(computer_moves_in_history)} unique computer moves in move_history: {sorted(computer_moves_in_history)}")
+        
+        # Emit per-simulation completion event for real-time updates
+        if socketio and suite_simulation_id:
+            socketio.emit('simulation_single_complete', {
+                'simulation_id': suite_simulation_id,
+                'single_simulation_id': simulation_id,
+                'user_strategy': user_strategy,
+                'computer_profile': computer_profile_name,
+                'final_user_payoff': float(final_user_payoff),
+                'final_computer_payoff': float(final_computer_payoff),
+                'num_rounds': actual_num_rounds,
+                'user_won': user_won,
+                'payoff_difference': float(payoff_difference)
+            }, room=suite_simulation_id)
         
         return {
             'simulation_id': simulation_id,
@@ -736,7 +760,9 @@ def run_simulation_suite(
                     computer_profile_name=computer_profile_name,
                     profile_manager=profile_manager,
                     num_rounds=random_num_rounds,
-                    simulation_id=simulation_id
+                    simulation_id=simulation_id,
+                    socketio=socketio,
+                    suite_simulation_id=simulation_id  # Pass suite ID for WebSocket room
                 )
                 strategy_results.append(result)
             except Exception as e:
@@ -759,7 +785,9 @@ def run_simulation_suite(
                 continue
             
             # Log progress for long-running simulations and emit via WebSocket
-            if (sim_num + 1) % 500 == 0:
+            # Emit updates more frequently for real-time feedback (every 50-100 sims depending on total)
+            progress_interval = max(50, min(100, num_simulations // 20))  # Adaptive interval
+            if (sim_num + 1) % progress_interval == 0 or (sim_num + 1) == num_simulations:
                 logger.info(f"  Progress: {sim_num + 1}/{num_simulations} simulations completed for {strategy}")
                 if socketio and simulation_id:
                     completed_sims = strategy_idx * num_simulations + (sim_num + 1)
@@ -794,7 +822,7 @@ def run_simulation_suite(
             # Calculate move-level statistics for histograms
             move_stats = calculate_move_statistics(strategy_results, base_game_config['payoff_matrix'])
             
-            all_results.append({
+            strategy_result = {
                 'user_strategy': strategy,
                 'simulations': strategy_results,  # Note: contains all simulation results (may be large)
                 'average_user_payoff': avg_user_payoff,
@@ -807,9 +835,10 @@ def run_simulation_suite(
                 'num_failed_simulations': len(failed_simulations),
                 'failed_simulations': failed_simulations,  # Include error details
                 'move_statistics': move_stats  # Add move-level statistics for histograms
-            })
+            }
+            all_results.append(strategy_result)
             
-            # Emit strategy completion progress
+            # Emit strategy completion progress and partial results
             if socketio and simulation_id:
                 completed_sims = (strategy_idx + 1) * num_simulations
                 socketio.emit('simulation_progress', {
@@ -823,6 +852,14 @@ def run_simulation_suite(
                     'total_simulations': total_simulations,
                     'progress_percentage': (completed_sims / total_simulations * 100) if total_simulations > 0 else 0,
                     'message': f'Completed all simulations for {strategy}'
+                }, room=simulation_id)
+                
+                # Emit partial results for this strategy (so UI can show incremental results)
+                socketio.emit('simulation_strategy_result', {
+                    'simulation_id': simulation_id,
+                    'strategy_result': strategy_result,
+                    'strategy_index': strategy_idx + 1,
+                    'total_strategies': total_strategies
                 }, room=simulation_id)
         else:
             logger.error(f"No successful simulations for strategy: {strategy}")
