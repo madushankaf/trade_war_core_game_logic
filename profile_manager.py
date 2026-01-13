@@ -74,6 +74,32 @@ class MixedStrategyConfig:
     bias: Dict[str, Any]
 
 
+# Mapping from profile names to Markov chain actor types
+PROFILE_TO_ACTOR_TYPE = {
+    "Hawkish": "aggressive",
+    "Dovish": "isolationist",
+    "Opportunist": "opportunist",
+    "TitForTatPlus": "neutralist",
+    "GrimTriggerPlus": "aggressive",
+    "GenerousTFT": "neutralist",
+    "SecurityFirst": "isolationist",
+    "NoisyExplorer": "opportunist",
+}
+
+def get_actor_type_for_profile(profile_name: str) -> str:
+    """
+    Map profile name to Markov chain actor type.
+    
+    Args:
+        profile_name: Name of the profile (e.g., "Hawkish", "Opportunist")
+    
+    Returns:
+        Actor type string for Markov chain (e.g., "aggressive", "opportunist")
+        Defaults to "neutralist" if profile not found in mapping
+    """
+    return PROFILE_TO_ACTOR_TYPE.get(profile_name, "neutralist")
+
+
 @dataclass
 class ProfileConfig:
     """Complete profile configuration"""
@@ -92,6 +118,7 @@ class ProfileConfig:
         """Convert ProfileConfig to dictionary"""
         result = {
             'name': self.name,
+            'type': get_actor_type_for_profile(self.name),  # Add Markov chain actor type
             'phases': {
                 'p1': [self.phases.p1_start, self.phases.p1_end],
                 'p2': [self.phases.p2_start, self.phases.p2_end],

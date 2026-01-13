@@ -12,21 +12,40 @@ STATES = _JSON_DATA["states"]
 STATE_TO_IDX = {state: idx for idx, state in enumerate(STATES)}
 IDX_TO_STATE = {idx: state for idx, state in enumerate(STATES)}
 
+def _normalize_state_name(state: str) -> str:
+    """
+    Normalize state name to handle inconsistencies between states list and transition matrices.
+    Maps "opportunist" to "opportunistic" for JSON lookup.
+    """
+    if state == "opportunist":
+        return "opportunistic"
+    elif state == "opportunistic" and "opportunist" in STATES:
+        # If states list has "opportunist", use it for indexing
+        return "opportunist"
+    return state
+
 def _json_matrix_to_numpy(json_matrix: dict) -> np.ndarray:
     """
     Convert JSON transition matrix (dict format) to numpy array.
     JSON format: {"from_state": {"to_state": prob, ...}, ...}
+    Handles state name normalization (e.g., "opportunist" vs "opportunistic").
     """
     n = len(STATES)
     matrix = np.zeros((n, n))
     
     for from_state in STATES:
         from_idx = STATE_TO_IDX[from_state]
-        json_key = f"from_{from_state}"
+        # Normalize state name for JSON lookup
+        normalized_from = _normalize_state_name(from_state)
+        json_key = f"from_{normalized_from}"
+        
         if json_key in json_matrix:
             for to_state in STATES:
                 to_idx = STATE_TO_IDX[to_state]
-                json_key_to = f"to_{to_state}"
+                # Normalize state name for JSON lookup
+                normalized_to = _normalize_state_name(to_state)
+                json_key_to = f"to_{normalized_to}"
+                
                 if json_key_to in json_matrix[json_key]:
                     matrix[from_idx, to_idx] = json_matrix[json_key][json_key_to]
     
@@ -54,6 +73,9 @@ for move_name, states_list in STATES_TO_MOVE_MAPPING.items():
         if state not in STATE_TO_MOVES:
             STATE_TO_MOVES[state] = []
         STATE_TO_MOVES[state].append(move_name)
+
+# Load tactic probabilities for states
+TACTIC_PROBABILITIES_FOR_STATES = _JSON_DATA.get("tactic_probabilities_for_states", {})
 
 def alpha(t: int, tau: float, beta: float = 1.0) -> float:
     """
@@ -126,14 +148,89 @@ def get_next_state(current_state: str, actor_type: str, round_num: int, rng=None
     current_idx = STATE_TO_IDX[current_state]
     probs = Pt[current_idx, :]
     
+    # Normalize probabilities to ensure they sum to 1 (handle numerical errors or missing data)
+    prob_sum = probs.sum()
+    if prob_sum == 0:
+        # If all probabilities are zero (e.g., missing data), use uniform distribution
+        probs = np.ones(len(STATES)) / len(STATES)
+    else:
+        probs = probs / prob_sum
+    
     # Sample next state
     next_idx = rng.choice(len(STATES), p=probs)
     next_state = IDX_TO_STATE[next_idx]
     
     return next_state
 
+def get_next_tactic_based_on_markov_state(current_state: str, actor_type: str, round_num: int, rng=None) -> Optional[str]:
+    """
+    Get the next tactic based on the next Markov state.
+    
+    This function:
+    1. Gets the next state from the Markov chain based on current state, actor type, and round
+    2. Looks up the tactic probability distribution for that next state
+    3. Samples a tactic based on those probabilities
+    4. Returns the tactic name
+    
+    Args:
+        current_state: Current Markov state (must be in STATES)
+        actor_type: Actor type (must be in ACTOR_TYPE_PARAMS)
+        round_num: Round number (must be between 1 and 999)
+        rng: Optional numpy random number generator (default_rng instance)
+    
+    Returns:
+        Tactic name (string) based on the next state's probability distribution, or None if no probabilities found
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    
+    if current_state not in STATE_TO_IDX:
+        raise KeyError(f"Unknown current_state={current_state}. Choose from {STATES}")
+    
+    if actor_type not in ACTOR_TYPE_PARAMS:
+        raise KeyError(f"Unknown actor_type={actor_type}. Choose from {list(ACTOR_TYPE_PARAMS.keys())}")
+    
+    if round_num not in range(1, 1000):
+        raise ValueError(f"Invalid round_num={round_num}. Must be between 1 and 999.")
+    
+    # Get the next state from the Markov chain
+    next_state = get_next_state(current_state, actor_type, round_num, rng)
+    if next_state not in STATE_TO_IDX:
+        raise KeyError(f"Unknown next_state={next_state}. Choose from {STATES}")
+    
+    # Normalize state name to handle inconsistencies (e.g., "opportunist" vs "opportunistic")
+    state_key = next_state
+    if state_key not in TACTIC_PROBABILITIES_FOR_STATES:
+        if state_key == "opportunist" and "opportunistic" in TACTIC_PROBABILITIES_FOR_STATES:
+            state_key = "opportunistic"
+        elif state_key == "opportunistic" and "opportunist" in TACTIC_PROBABILITIES_FOR_STATES:
+            state_key = "opportunist"
+    
+    # Get tactic probabilities for the next state
+    if state_key not in TACTIC_PROBABILITIES_FOR_STATES:
+        # No tactic probabilities found for this state, return None
+        return None
+    
+    tactic_probs = TACTIC_PROBABILITIES_FOR_STATES[state_key]
+    
+    # Extract tactic names and probabilities
+    tactics = list(tactic_probs.keys())
+    probabilities = [tactic_probs[tactic] for tactic in tactics]
+    
+    # Normalize probabilities to ensure they sum to 1
+    prob_sum = sum(probabilities)
+    if prob_sum == 0:
+        # All probabilities are zero, return None
+        return None
+    
+    probabilities = [p / prob_sum for p in probabilities]
+    
+    # Sample a tactic based on the probability distribution
+    selected_tactic = rng.choice(tactics, p=probabilities)
+    
+    return selected_tactic
 
-def get_next_move_based_on_markov_chain(current_move: str, actor_type: str, round_num: int, rng=None) -> Optional[str]:
+def get_a_random_next_move_based_on_markov_chain(current_move: str, actor_type: str, round_num: int, rng=None) -> Optional[str]:
     """
     Get the next move based on the current move, actor type, and round number.
     

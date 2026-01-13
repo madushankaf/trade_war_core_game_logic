@@ -6,7 +6,7 @@ import nashpy as nash
 from scipy.optimize import linprog
 from game_logger import get_game_logger, get_noop_game_logger
 import random
-from markov_chain import get_next_state, get_next_move_based_on_markov_chain
+from markov_chain import get_next_state, get_a_random_next_move_based_on_markov_chain, get_next_tactic_based_on_markov_state, STATES_TO_MOVE_MAPPING
 
 # Phase boundaries (deprecated - now calculated from percentages)
 # Kept for backward compatibility
@@ -955,15 +955,64 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
         user_move = get_a_random_move(game['user_moves'])
 
 
-    next_markov_move = get_next_move_based_on_markov_chain(game['state']['last_computer_move']['name'], game['computer_profile']['type'], round_idx)
-    if next_markov_move is None:
-        print(f"Next markov move is None, getting a random move")
+    if game['state']['last_computer_move'] is None:
         next_markov_move = get_a_random_move(game['computer_moves'])
+    else:
+        # Map move name to state name for Markov chain
+        last_move_name = game['state']['last_computer_move']['name']
+        possible_states = STATES_TO_MOVE_MAPPING.get(last_move_name, [])
+        
+        if possible_states:
+            # Use the first state (or could randomly select if multiple states map to the move)
+            # Store the state for future reference
+            current_state = possible_states[0]
+            game['state']['last_computer_state'] = current_state
+            
+            # Get tactic based on the state
+            next_markov_tactic = get_next_tactic_based_on_markov_state(
+                current_state,  # Use state name, not move name
+                game['computer_profile']['type'], 
+                round_idx
+            )
+        else:
+            # Move doesn't map to any state, set tactic to None
+            next_markov_tactic = None
+            game['state']['last_computer_state'] = None
+        
+        if next_markov_tactic is None:
+            next_markov_move = get_a_random_next_move_based_on_markov_chain(game['state']['last_computer_move']['name'], game['computer_profile']['type'], round_idx)
+        else:
+            if next_markov_tactic == 'nash_equilibrium':
+                next_markov_move = get_a_random_move_from_nash_equilibrium_strategy(
+                    find_nash_equilibrium_strategy(
+                        game['computer_moves'], game['user_moves'], game['payoff_matrix']),
+                    game['computer_moves'])
+            elif next_markov_tactic == 'greedy_best_response':
+                epsilon = calculate_epsilon(computer_profile, round_idx)
+                next_markov_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon=epsilon, payoff_matrix=game['payoff_matrix'])
+            elif next_markov_tactic == 'mixed_indifference':
+                next_markov_move = get_the_next_move_based_on_mixed_strartegy_probability_indifference(
+                    game['computer_moves'],
+                    game['user_moves'],
+                    game['payoff_matrix'],
+                    game['state'],
+                    user_support=None,        # plug in your support rule
+                    num_rounds=game.get('num_rounds', 200)
+                )
+            else:
+                next_markov_move = get_a_random_move(game['computer_moves'])
 
     computer_move = next_markov_move
 
     game['state']['last_computer_move'] = computer_move
     game['state']['round_idx'] = round_idx
+    
+    # Map the new computer move to its state for next round
+    move_states = STATES_TO_MOVE_MAPPING.get(computer_move['name'], [])
+    if move_states:
+        game['state']['last_computer_state'] = move_states[0]
+    else:
+        game['state']['last_computer_state'] = None
 
     # Respond to user's dominant move with mixed strategy:
     # - 60% of the time: play best response
@@ -973,6 +1022,7 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
     if user_dominant and user_move == user_dominant:
         rand = random.random()
         if rand < 0.6:  # 60% - play best response
+            epsilon = calculate_epsilon(computer_profile, round_idx)
             best_response = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon=0.0, payoff_matrix=game['payoff_matrix'])
             computer_move = best_response if best_response else computer_move
             game['state']['last_computer_move'] = computer_move
@@ -1019,7 +1069,8 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
     game['num_rounds'] = num_rounds
     
     for i in range(num_rounds):
-        user_move, computer_move = play_game_round(game, i)
+        #user_move, computer_move = play_game_round(game, i)
+        user_move, computer_move = play_game_round_with_markov_chain(game, i)
         if user_move is None:
             continue
         if computer_move is None:
