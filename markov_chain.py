@@ -12,39 +12,22 @@ STATES = _JSON_DATA["states"]
 STATE_TO_IDX = {state: idx for idx, state in enumerate(STATES)}
 IDX_TO_STATE = {idx: state for idx, state in enumerate(STATES)}
 
-def _normalize_state_name(state: str) -> str:
-    """
-    Normalize state name to handle inconsistencies between states list and transition matrices.
-    Maps "opportunist" to "opportunistic" for JSON lookup.
-    """
-    if state == "opportunist":
-        return "opportunistic"
-    elif state == "opportunistic" and "opportunist" in STATES:
-        # If states list has "opportunist", use it for indexing
-        return "opportunist"
-    return state
-
 def _json_matrix_to_numpy(json_matrix: dict) -> np.ndarray:
     """
     Convert JSON transition matrix (dict format) to numpy array.
     JSON format: {"from_state": {"to_state": prob, ...}, ...}
-    Handles state name normalization (e.g., "opportunist" vs "opportunistic").
     """
     n = len(STATES)
     matrix = np.zeros((n, n))
     
     for from_state in STATES:
         from_idx = STATE_TO_IDX[from_state]
-        # Normalize state name for JSON lookup
-        normalized_from = _normalize_state_name(from_state)
-        json_key = f"from_{normalized_from}"
+        json_key = f"from_{from_state}"
         
         if json_key in json_matrix:
             for to_state in STATES:
                 to_idx = STATE_TO_IDX[to_state]
-                # Normalize state name for JSON lookup
-                normalized_to = _normalize_state_name(to_state)
-                json_key_to = f"to_{normalized_to}"
+                json_key_to = f"to_{to_state}"
                 
                 if json_key_to in json_matrix[json_key]:
                     matrix[from_idx, to_idx] = json_matrix[json_key][json_key_to]
@@ -198,20 +181,12 @@ def get_next_tactic_based_on_markov_state(current_state: str, actor_type: str, r
     if next_state not in STATE_TO_IDX:
         raise KeyError(f"Unknown next_state={next_state}. Choose from {STATES}")
     
-    # Normalize state name to handle inconsistencies (e.g., "opportunist" vs "opportunistic")
-    state_key = next_state
-    if state_key not in TACTIC_PROBABILITIES_FOR_STATES:
-        if state_key == "opportunist" and "opportunistic" in TACTIC_PROBABILITIES_FOR_STATES:
-            state_key = "opportunistic"
-        elif state_key == "opportunistic" and "opportunist" in TACTIC_PROBABILITIES_FOR_STATES:
-            state_key = "opportunist"
-    
     # Get tactic probabilities for the next state
-    if state_key not in TACTIC_PROBABILITIES_FOR_STATES:
+    if next_state not in TACTIC_PROBABILITIES_FOR_STATES:
         # No tactic probabilities found for this state, return None
         return None
     
-    tactic_probs = TACTIC_PROBABILITIES_FOR_STATES[state_key]
+    tactic_probs = TACTIC_PROBABILITIES_FOR_STATES[next_state]
     
     # Extract tactic names and probabilities
     tactics = list(tactic_probs.keys())
@@ -262,29 +237,18 @@ def get_a_random_next_move_based_on_markov_chain(current_move: str, actor_type: 
         # No states mapped to this move, return None
         return None
     
-    # Normalize state names to handle inconsistencies (e.g., "opportunist" vs "opportunistic")
-    # Check if we need to map "opportunist" to "opportunistic" or vice versa
-    normalized_states = []
-    for s in possible_states:
-        if s in STATE_TO_IDX:
-            normalized_states.append(s)
-        elif s == "opportunist" and "opportunistic" in STATE_TO_IDX:
-            # Map "opportunist" to "opportunistic" if it exists
-            normalized_states.append("opportunistic")
-        elif s == "opportunistic" and "opportunist" in STATE_TO_IDX:
-            # Map "opportunistic" to "opportunist" if it exists
-            normalized_states.append("opportunist")
-    
-    if not normalized_states:
+    # Validate that all states are in STATE_TO_IDX
+    valid_states = [s for s in possible_states if s in STATE_TO_IDX]
+    if not valid_states:
         # No valid states found, return None
         return None
     
     # If multiple valid states map to this move, randomly select one
     # Otherwise, use the single state
-    if len(normalized_states) == 1:
-        current_state = normalized_states[0]
+    if len(valid_states) == 1:
+        current_state = valid_states[0]
     else:
-        current_state = rng.choice(normalized_states)
+        current_state = rng.choice(valid_states)
     
     # Get the next state from the Markov chain using the mapped state
     # Wrap in try-except to handle cases where transition probabilities are invalid

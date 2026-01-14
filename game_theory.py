@@ -196,9 +196,13 @@ def is_the_move_with_the_better_payoff(move1: dict, move2: dict, opponent_move: 
 
 def get_expected_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict]) -> float:
     """
-    Calculate the expected (deterministic) payoff for a move against a specific opponent move.
-    This function is used by solvers (Nash equilibrium, linear programming, etc.) and should
-    NEVER include random noise to ensure stable, reproducible results.
+    Calculate the pure-strategy payoff for a move against a specific opponent move.
+    This function returns u(i,j), the intrinsic payoff when strategy i is played against strategy j.
+    This is used by solvers (Nash equilibrium, linear programming, dominance checks, etc.) and should
+    NEVER include random noise or scale by probabilities to ensure stable, reproducible results.
+    
+    For mixed-strategy expected values, compute them properly as p^T A q (matrix multiplication)
+    using the pure-strategy payoffs returned by this function.
     
     Args:
         move: The move to evaluate
@@ -214,16 +218,14 @@ def get_expected_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dic
             ]
         
     Returns:
-        float: The expected payoff (deterministic, no noise)
+        float: The pure-strategy payoff u(i,j) (deterministic, no noise, no probability scaling)
     """
-    print(f"\nCalculating expected payoff for move: {move['name']} (type: {move['type']}, probability: {move['probability']})")
-    print(f"Against opponent move: {opponent_move['name']} (type: {opponent_move['type']}, probability: {opponent_move['probability']})")
+    print(f"\nCalculating pure-strategy payoff for move: {move['name']} (type: {move['type']})")
+    print(f"Against opponent move: {opponent_move['name']} (type: {opponent_move['type']})")
     
-    # Extract move parameters
+    # Extract move names (ignore probabilities - they're not part of pure-strategy payoffs)
     move_name = move.get('name', '')
-    move_prob = move.get('probability', 1.0)
     opp_name = opponent_move.get('name', '')
-    opp_prob = opponent_move.get('probability', 1.0)
     player = move.get('player', None)
     if player is None:
         raise ValueError(f"Move {move['name']} has no player")
@@ -250,17 +252,15 @@ def get_expected_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dic
         print(f"No payoff entry found for move combination: {move_name} vs {opp_name}")
         return 0.0
     
-    # Get base payoff and adjust for probabilities
+    # Get pure-strategy payoff (no probability scaling)
     # Convert enum to string value for dictionary access
     player_key = player.value if hasattr(player, 'value') else str(player)
-    base_payoff = payoff_entry['payoff'][player_key]
-    expected_payoff = base_payoff * move_prob * opp_prob
+    pure_payoff = payoff_entry['payoff'][player_key]
     
     print(f"Found payoff entry: {payoff_entry}")
-    print(f"Base payoff: {base_payoff}")
-    print(f"Expected payoff (with probabilities): {expected_payoff}")
+    print(f"Pure-strategy payoff u({move_name}, {opp_name}): {pure_payoff}")
     
-    return expected_payoff
+    return pure_payoff
 
 def get_realized_payoff(move: dict, opponent_move: dict, payoff_matrix: List[dict]) -> float:
     """
@@ -958,16 +958,24 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
     if game['state']['last_computer_move'] is None:
         next_markov_move = get_a_random_move(game['computer_moves'])
     else:
-        # Map move name to state name for Markov chain
-        last_move_name = game['state']['last_computer_move']['name']
-        possible_states = STATES_TO_MOVE_MAPPING.get(last_move_name, [])
+        # Prefer using stored state from previous round (don't remap from move unnecessarily)
+        current_state = game['state'].get('last_computer_state')
         
-        if possible_states:
-            # Use the first state (or could randomly select if multiple states map to the move)
-            # Store the state for future reference
-            current_state = possible_states[0]
-            game['state']['last_computer_state'] = current_state
+        # Only remap from move if stored state doesn't exist or is invalid
+        if current_state is None:
+            last_move_name = game['state']['last_computer_move']['name']
+            possible_states = STATES_TO_MOVE_MAPPING.get(last_move_name, [])
             
+            if possible_states:
+                # Randomly select if multiple states map to the move
+                current_state = random.choice(possible_states) if len(possible_states) > 1 else possible_states[0]
+                game['state']['last_computer_state'] = current_state
+            else:
+                # Move doesn't map to any state
+                current_state = None
+                game['state']['last_computer_state'] = None
+        
+        if current_state:
             # Get tactic based on the state
             next_markov_tactic = get_next_tactic_based_on_markov_state(
                 current_state,  # Use state name, not move name
@@ -975,9 +983,8 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
                 round_idx
             )
         else:
-            # Move doesn't map to any state, set tactic to None
+            # No valid state, set tactic to None
             next_markov_tactic = None
-            game['state']['last_computer_state'] = None
         
         if next_markov_tactic is None:
             next_markov_move = get_a_random_next_move_based_on_markov_chain(game['state']['last_computer_move']['name'], game['computer_profile']['type'], round_idx)
@@ -988,7 +995,7 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
                         game['computer_moves'], game['user_moves'], game['payoff_matrix']),
                     game['computer_moves'])
             elif next_markov_tactic == 'greedy_best_response':
-                epsilon = calculate_epsilon(computer_profile, round_idx)
+                epsilon = calculate_epsilon(game['computer_profile'], round_idx)
                 next_markov_move = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon=epsilon, payoff_matrix=game['payoff_matrix'])
             elif next_markov_tactic == 'mixed_indifference':
                 next_markov_move = get_the_next_move_based_on_mixed_strartegy_probability_indifference(
@@ -1010,7 +1017,8 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
     # Map the new computer move to its state for next round
     move_states = STATES_TO_MOVE_MAPPING.get(computer_move['name'], [])
     if move_states:
-        game['state']['last_computer_state'] = move_states[0]
+        # Randomly select if multiple states map to the move
+        game['state']['last_computer_state'] = random.choice(move_states) if len(move_states) > 1 else move_states[0]
     else:
         game['state']['last_computer_state'] = None
 
@@ -1022,14 +1030,26 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
     if user_dominant and user_move == user_dominant:
         rand = random.random()
         if rand < 0.6:  # 60% - play best response
-            epsilon = calculate_epsilon(computer_profile, round_idx)
+            epsilon = calculate_epsilon(game['computer_profile'], round_idx)
             best_response = find_best_response_using_epsilon_greedy(game['computer_moves'], user_move, epsilon=0.0, payoff_matrix=game['payoff_matrix'])
             computer_move = best_response if best_response else computer_move
             game['state']['last_computer_move'] = computer_move
+            # Update state to match the new move
+            move_states = STATES_TO_MOVE_MAPPING.get(computer_move['name'], [])
+            if move_states:
+                game['state']['last_computer_state'] = random.choice(move_states) if len(move_states) > 1 else move_states[0]
+            else:
+                game['state']['last_computer_state'] = None
         elif rand < 0.8:  # 20% - play security level strategy (0.6 to 0.8 = 20%)
             security_level_response = get_security_level_strategy(game['computer_moves'], game['user_moves'], game['payoff_matrix'])
             computer_move = security_level_response if security_level_response else computer_move
             game['state']['last_computer_move'] = computer_move
+            # Update state to match the new move
+            move_states = STATES_TO_MOVE_MAPPING.get(computer_move['name'], [])
+            if move_states:
+                game['state']['last_computer_state'] = random.choice(move_states) if len(move_states) > 1 else move_states[0]
+            else:
+                game['state']['last_computer_state'] = None
         # else: 20% - play normal (keep original computer_move, already set above)
 
     return user_move, computer_move
