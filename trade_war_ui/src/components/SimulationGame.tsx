@@ -386,7 +386,7 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [userCountry, setUserCountry] = useState<Country | null>(null);
   const [opponentCountry, setOpponentCountry] = useState<Country | null>(null);
-  const [selectedProfile, setSelectedProfile] = useState<string>('');
+  const [selectedProfile, setSelectedProfile] = useState<string>('Dovish');
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>(['copy_cat', 'tit_for_tat']);
   const [availableMoves, setAvailableMoves] = useState<string[]>(defaultMoves.map(m => m.name));
   const [sameCountryError, setSameCountryError] = useState<string>('');
@@ -788,7 +788,7 @@ const SimulationGame: React.FC<SimulationGameProps> = ({ onBackToSetup }) => {
               <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
                 <Typography variant="h6" gutterBottom>Computer Behavior Profile</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {Object.keys(profiles).map((profileName) => (
+                  {['Dovish', 'Hawkish', 'Opportunist'].map((profileName) => (
                     <Chip
                       key={profileName}
                       label={profileName}

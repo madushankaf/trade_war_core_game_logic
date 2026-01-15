@@ -36,6 +36,33 @@ CORS(app,
      }})
 socketio = SocketIO(app, cors_allowed_origins="*")  # Enable SocketIO with CORS
 
+def async_emit(socketio_instance, event, data, room=None, namespace=None):
+    """
+    Emit a WebSocket message asynchronously using background tasks.
+    This prevents blocking the calling thread while sending messages.
+    
+    Args:
+        socketio_instance: The SocketIO instance to use for emitting
+        event: The event name to emit
+        data: The data to send
+        room: Optional room to target (if None, broadcasts to all)
+        namespace: Optional namespace (defaults to '/')
+    """
+    if socketio_instance is None:
+        return
+    
+    def _emit():
+        try:
+            if room:
+                socketio_instance.emit(event, data, room=room, namespace=namespace)
+            else:
+                socketio_instance.emit(event, data, namespace=namespace)
+        except Exception as e:
+            logger.error(f"Error emitting WebSocket event {event}: {str(e)}")
+    
+    # Use start_background_task for async execution
+    socketio_instance.start_background_task(_emit)
+
 # Explicit CORS headers as backup (ensures headers are always present)
 @app.after_request
 def after_request(response):
@@ -316,7 +343,7 @@ def play_game(game_id):
                 logger.info(f"Game {game_id} completed successfully")
             except Exception as e:
                 logger.error(f"Error in background game: {str(e)}")
-                socketio.emit('game_error', {'error': str(e)}, room=game_id)
+                async_emit(socketio, 'game_error', {'error': str(e)}, room=game_id)
         
         # Start game in background thread
         game_thread = threading.Thread(target=run_game_with_websocket)
@@ -381,7 +408,7 @@ def play_round(game_id):
         
         # Emit WebSocket update if client is connected
         if socketio:
-            socketio.emit('round_update', response_data, room=game_id)
+            async_emit(socketio, 'round_update', response_data, room=game_id)
         
         return jsonify(response_data), 200
 
@@ -555,7 +582,7 @@ def run_simulation_suite_endpoint():
         def run_simulation_async():
             try:
                 # Emit start event
-                socketio.emit('simulation_started', {
+                async_emit(socketio, 'simulation_started', {
                     'simulation_id': simulation_id,
                     'message': 'Simulation started',
                     'user_strategies': data['user_strategies'],
@@ -579,7 +606,7 @@ def run_simulation_suite_endpoint():
                 )
                 
                 # Emit completion event with results
-                socketio.emit('simulation_complete', {
+                async_emit(socketio, 'simulation_complete', {
                     'simulation_id': simulation_id,
                     'result': result
                 }, room=simulation_id)
@@ -590,7 +617,7 @@ def run_simulation_suite_endpoint():
                 logger.error(f"Error in background simulation {simulation_id}: {str(e)}")
                 import traceback
                 logger.error(traceback.format_exc())
-                socketio.emit('simulation_error', {
+                async_emit(socketio, 'simulation_error', {
                     'simulation_id': simulation_id,
                     'error': str(e)
                 }, room=simulation_id)

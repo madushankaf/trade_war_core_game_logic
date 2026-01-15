@@ -30,6 +30,33 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def _async_emit(socketio_instance, event, data, room=None):
+    """
+    Emit a WebSocket message asynchronously using background tasks.
+    This prevents blocking the calling thread while sending messages.
+    
+    Args:
+        socketio_instance: The SocketIO instance to use for emitting
+        event: The event name to emit
+        data: The data to send
+        room: Optional room to target (if None, broadcasts to all)
+    """
+    if socketio_instance is None:
+        return
+    
+    def _emit():
+        try:
+            if room:
+                socketio_instance.emit(event, data, room=room)
+            else:
+                socketio_instance.emit(event, data)
+        except Exception as e:
+            logger.error(f"Error emitting WebSocket event {event}: {str(e)}")
+    
+    # Use start_background_task for async execution
+    socketio_instance.start_background_task(_emit)
+
+
 def calculate_move_statistics(simulation_results: List[Dict[str, Any]], payoff_matrix: List[PayoffEntry]) -> Dict[str, Any]:
     """
     Calculate move-level statistics from simulation results.
@@ -444,7 +471,7 @@ def run_single_simulation(
         
         # Emit per-simulation completion event for real-time updates
         if socketio and suite_simulation_id:
-            socketio.emit('simulation_single_complete', {
+            _async_emit(socketio, 'simulation_single_complete', {
                 'simulation_id': suite_simulation_id,
                 'single_simulation_id': simulation_id,
                 'user_strategy': user_strategy,
@@ -712,7 +739,7 @@ def run_simulation_suite(
         
         # Emit strategy start progress
         if socketio and simulation_id:
-            socketio.emit('simulation_progress', {
+            _async_emit(socketio, 'simulation_progress', {
                 'simulation_id': simulation_id,
                 'status': 'running',
                 'current_strategy': strategy,
@@ -791,7 +818,7 @@ def run_simulation_suite(
                 logger.info(f"  Progress: {sim_num + 1}/{num_simulations} simulations completed for {strategy}")
                 if socketio and simulation_id:
                     completed_sims = strategy_idx * num_simulations + (sim_num + 1)
-                    socketio.emit('simulation_progress', {
+                    _async_emit(socketio, 'simulation_progress', {
                         'simulation_id': simulation_id,
                         'status': 'running',
                         'current_strategy': strategy,
@@ -841,7 +868,7 @@ def run_simulation_suite(
             # Emit strategy completion progress and partial results
             if socketio and simulation_id:
                 completed_sims = (strategy_idx + 1) * num_simulations
-                socketio.emit('simulation_progress', {
+                _async_emit(socketio, 'simulation_progress', {
                     'simulation_id': simulation_id,
                     'status': 'running',
                     'current_strategy': strategy,
@@ -855,7 +882,7 @@ def run_simulation_suite(
                 }, room=simulation_id)
                 
                 # Emit partial results for this strategy (so UI can show incremental results)
-                socketio.emit('simulation_strategy_result', {
+                _async_emit(socketio, 'simulation_strategy_result', {
                     'simulation_id': simulation_id,
                     'strategy_result': strategy_result,
                     'strategy_index': strategy_idx + 1,

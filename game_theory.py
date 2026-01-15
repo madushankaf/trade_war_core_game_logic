@@ -1054,6 +1054,33 @@ def play_game_round_with_markov_chain(game: dict, round_idx: int) -> Tuple[dict,
 
     return user_move, computer_move
 
+def _async_emit(socketio_instance, event, data, room=None):
+    """
+    Emit a WebSocket message asynchronously using background tasks.
+    This prevents blocking the calling thread while sending messages.
+    
+    Args:
+        socketio_instance: The SocketIO instance to use for emitting
+        event: The event name to emit
+        data: The data to send
+        room: Optional room to target (if None, broadcasts to all)
+    """
+    if socketio_instance is None:
+        return
+    
+    def _emit():
+        try:
+            if room:
+                socketio_instance.emit(event, data, room=room)
+            else:
+                socketio_instance.emit(event, data)
+        except Exception as e:
+            # Use print since logger might not be available in this context
+            print(f"Error emitting WebSocket event {event}: {str(e)}")
+    
+    # Use start_background_task for async execution
+    socketio_instance.start_background_task(_emit)
+
 def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float = 0.5, enable_logging: bool = True) -> dict:
     """
     Play a complete game and return the moves history and dominant strategies.
@@ -1183,7 +1210,7 @@ def play_full_game(game: dict, socketio=None, game_id=None, round_delay: float =
                 "game_status": "in_progress" if i < num_rounds - 1 else "completed"
             }
             
-            socketio.emit('game_update', update_data, room=game_id)
+            _async_emit(socketio, 'game_update', update_data, room=game_id)
             
             # Add delay between rounds for better real-time experience
             if round_delay > 0:
