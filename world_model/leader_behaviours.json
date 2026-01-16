@@ -1,0 +1,184 @@
+{
+    "timestep": "1_week",
+    "behavior_order": ["DOVISH", "NEUTRAL", "OPPORTUNISTIC", "HAWKISH"],
+    "model_guardrails": {
+      "min_prob_floor": 0.000001,
+      "max_total_abs_logit_bump_per_step": 1.2,
+      "max_single_rule_abs_logit_bump": 0.9,
+      "use_behavior_inertia": true
+    },
+    "countries": {
+      "USA": {
+        "env_states": ["NORMAL","ELECTION_CYCLE","ECON_STRESS","MARKET_VOLATILITY","SECURITY_SHOCK","NATURAL_DISASTER","ALLIANCE_COORDINATION"],
+        "base_behavior_transition": {
+          "DOVISH": [0.80,0.12,0.05,0.03],
+          "NEUTRAL": [0.08,0.78,0.08,0.06],
+          "OPPORTUNISTIC": [0.05,0.10,0.75,0.10],
+          "HAWKISH": [0.03,0.10,0.10,0.77]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["ELECTION_CYCLE"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.35, "priority": 40, "cap_group": "domestic_politics" },
+          { "env_states": ["ECON_STRESS"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.40, "priority": 30, "cap_group": "macro" },
+          { "env_states": ["ECON_STRESS"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.15, "priority": 30, "cap_group": "macro" },
+          { "env_states": ["MARKET_VOLATILITY"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.30, "priority": 25, "cap_group": "macro" },
+          { "env_states": ["SECURITY_SHOCK"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.70, "priority": 80, "cap_group": "security" },
+          { "env_states": ["SECURITY_SHOCK"], "target_behaviors": ["NEUTRAL"], "logit_bump": -0.20, "priority": 80, "cap_group": "security" },
+          { "env_states": ["NATURAL_DISASTER"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": 0.35, "priority": 60, "cap_group": "domestic_shock" },
+          { "env_states": ["NATURAL_DISASTER"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.25, "priority": 60, "cap_group": "domestic_shock" },
+          { "env_states": ["ALLIANCE_COORDINATION"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": 0.30, "priority": 55, "cap_group": "alliance" },
+          { "env_states": ["ALLIANCE_COORDINATION"], "target_behaviors": ["OPPORTUNISTIC"], "logit_bump": -0.10, "priority": 55, "cap_group": "alliance" }
+        ]
+      },
+  
+      "INDIA": {
+        "env_states": ["NORMAL","ELECTION_CYCLE","BORDER_TENSION","FOOD_INFLATION","COALITION_TIGHT","INTERNAL_SECURITY_SHOCK","GREAT_POWER_BALANCING"],
+        "base_behavior_transition": {
+          "DOVISH": [0.76,0.18,0.04,0.02],
+          "NEUTRAL": [0.07,0.80,0.08,0.05],
+          "OPPORTUNISTIC": [0.03,0.12,0.78,0.07],
+          "HAWKISH": [0.02,0.12,0.12,0.74]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["ELECTION_CYCLE"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.35, "priority": 40, "cap_group": "domestic_politics" },
+          { "env_states": ["BORDER_TENSION"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.85, "priority": 85, "cap_group": "security" },
+          { "env_states": ["BORDER_TENSION"], "target_behaviors": ["OPPORTUNISTIC"], "logit_bump": 0.15, "priority": 85, "cap_group": "security" },
+          { "env_states": ["INTERNAL_SECURITY_SHOCK"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.65, "priority": 80, "cap_group": "security" },
+          { "env_states": ["FOOD_INFLATION"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.40, "priority": 35, "cap_group": "macro" },
+          { "env_states": ["FOOD_INFLATION"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.15, "priority": 35, "cap_group": "macro" },
+          { "env_states": ["COALITION_TIGHT"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.30, "priority": 45, "cap_group": "domestic_politics" },
+          { "env_states": ["COALITION_TIGHT"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.20, "priority": 45, "cap_group": "domestic_politics" },
+          { "env_states": ["GREAT_POWER_BALANCING"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL","DOVISH"], "logit_bump": 0.30, "priority": 50, "cap_group": "strategy" }
+        ]
+      },
+  
+      "EU": {
+        "env_states": ["UNITY_HIGH","UNITY_LOW","ELECTION_WAVE","ENERGY_SHOCK","MIGRATION_PRESSURE","HYBRID_THREAT","INDUSTRIAL_PRESSURE"],
+        "base_behavior_transition": {
+          "DOVISH": [0.82,0.14,0.03,0.01],
+          "NEUTRAL": [0.14,0.78,0.06,0.02],
+          "OPPORTUNISTIC": [0.08,0.18,0.70,0.04],
+          "HAWKISH": [0.06,0.20,0.10,0.64]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["UNITY_HIGH"], "target_behaviors": ["DOVISH","NEUTRAL"], "logit_bump": 0.30, "priority": 40, "cap_group": "institutions" },
+          { "env_states": ["UNITY_LOW"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.25, "priority": 40, "cap_group": "institutions" },
+          { "env_states": ["ELECTION_WAVE"], "target_behaviors": ["OPPORTUNISTIC"], "logit_bump": 0.35, "priority": 45, "cap_group": "domestic_politics" },
+          { "env_states": ["ENERGY_SHOCK"], "target_behaviors": ["OPPORTUNISTIC","DOVISH"], "logit_bump": 0.35, "priority": 55, "cap_group": "macro" },
+          { "env_states": ["ENERGY_SHOCK"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.20, "priority": 55, "cap_group": "macro" },
+          { "env_states": ["MIGRATION_PRESSURE"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.25, "priority": 60, "cap_group": "domestic_pressure" },
+          { "env_states": ["HYBRID_THREAT"], "target_behaviors": ["HAWKISH","NEUTRAL"], "logit_bump": 0.55, "priority": 80, "cap_group": "security" },
+          { "env_states": ["INDUSTRIAL_PRESSURE"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.35, "priority": 50, "cap_group": "macro" }
+        ]
+      },
+  
+      "UK": {
+        "env_states": ["NORMAL","ELECTION_CYCLE","GOV_STABILITY_LOW","COST_OF_LIVING_STRESS","SECURITY_SHOCK","TRADE_PUSH","NATURAL_DISASTER"],
+        "base_behavior_transition": {
+          "DOVISH": [0.80,0.14,0.04,0.02],
+          "NEUTRAL": [0.10,0.80,0.06,0.04],
+          "OPPORTUNISTIC": [0.05,0.12,0.74,0.09],
+          "HAWKISH": [0.03,0.12,0.10,0.75]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["ELECTION_CYCLE"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.35, "priority": 40, "cap_group": "domestic_politics" },
+          { "env_states": ["GOV_STABILITY_LOW"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.30, "priority": 50, "cap_group": "domestic_politics" },
+          { "env_states": ["GOV_STABILITY_LOW"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.15, "priority": 50, "cap_group": "domestic_politics" },
+          { "env_states": ["COST_OF_LIVING_STRESS"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.40, "priority": 55, "cap_group": "macro" },
+          { "env_states": ["SECURITY_SHOCK"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.70, "priority": 85, "cap_group": "security" },
+          { "env_states": ["SECURITY_SHOCK"], "target_behaviors": ["NEUTRAL"], "logit_bump": -0.15, "priority": 85, "cap_group": "security" },
+          { "env_states": ["TRADE_PUSH"], "target_behaviors": ["OPPORTUNISTIC","DOVISH"], "logit_bump": 0.45, "priority": 65, "cap_group": "trade" },
+          { "env_states": ["NATURAL_DISASTER"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": 0.35, "priority": 60, "cap_group": "domestic_shock" },
+          { "env_states": ["NATURAL_DISASTER"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.25, "priority": 60, "cap_group": "domestic_shock" }
+        ]
+      },
+  
+      "CHINA": {
+        "env_states": ["GROWTH_STRONG","GROWTH_SLOWDOWN","ELITE_SIGNALING","FLASHPOINT_TENSION","TECH_TRADE_PRESSURE","SOCIAL_STABILITY_SENSITIVE","DIPLOMATIC_OUTREACH"],
+        "base_behavior_transition": {
+          "DOVISH": [0.78,0.17,0.04,0.01],
+          "NEUTRAL": [0.06,0.84,0.07,0.03],
+          "OPPORTUNISTIC": [0.03,0.12,0.80,0.05],
+          "HAWKISH": [0.02,0.18,0.10,0.70]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["GROWTH_STRONG"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.20, "priority": 30, "cap_group": "macro" },
+          { "env_states": ["GROWTH_SLOWDOWN"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.35, "priority": 55, "cap_group": "macro" },
+          { "env_states": ["GROWTH_SLOWDOWN"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.15, "priority": 55, "cap_group": "macro" },
+          { "env_states": ["ELITE_SIGNALING"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.30, "priority": 50, "cap_group": "domestic_politics" },
+          { "env_states": ["FLASHPOINT_TENSION"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.75, "priority": 90, "cap_group": "security" },
+          { "env_states": ["FLASHPOINT_TENSION"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": -0.15, "priority": 90, "cap_group": "security" },
+          { "env_states": ["TECH_TRADE_PRESSURE"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.45, "priority": 70, "cap_group": "trade" },
+          { "env_states": ["SOCIAL_STABILITY_SENSITIVE"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": 0.45, "priority": 85, "cap_group": "domestic_pressure" },
+          { "env_states": ["SOCIAL_STABILITY_SENSITIVE"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.30, "priority": 85, "cap_group": "domestic_pressure" },
+          { "env_states": ["DIPLOMATIC_OUTREACH"], "target_behaviors": ["DOVISH","NEUTRAL"], "logit_bump": 0.45, "priority": 75, "cap_group": "diplomacy" },
+          { "env_states": ["DIPLOMATIC_OUTREACH"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.25, "priority": 75, "cap_group": "diplomacy" }
+        ]
+      },
+  
+      "RUSSIA": {
+        "env_states": ["SANCTIONS_ISOLATION_HIGH","CONFLICT_ESCALATION","ENERGY_REVENUE_SURGE","ENERGY_REVENUE_STRESS","ELITE_COHESION_RISK","LEGITIMACY_MANAGEMENT","DOMESTIC_SECURITY_SHOCK"],
+        "base_behavior_transition": {
+          "DOVISH": [0.70,0.18,0.08,0.04],
+          "NEUTRAL": [0.04,0.76,0.10,0.10],
+          "OPPORTUNISTIC": [0.02,0.10,0.78,0.10],
+          "HAWKISH": [0.01,0.09,0.12,0.78]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["SANCTIONS_ISOLATION_HIGH"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.35, "priority": 60, "cap_group": "sanctions" },
+          { "env_states": ["CONFLICT_ESCALATION"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.85, "priority": 95, "cap_group": "security" },
+          { "env_states": ["CONFLICT_ESCALATION"], "target_behaviors": ["DOVISH"], "logit_bump": -0.30, "priority": 95, "cap_group": "security" },
+          { "env_states": ["ENERGY_REVENUE_SURGE"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.30, "priority": 40, "cap_group": "macro" },
+          { "env_states": ["ENERGY_REVENUE_STRESS"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.35, "priority": 55, "cap_group": "macro" },
+          { "env_states": ["ELITE_COHESION_RISK"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.30, "priority": 70, "cap_group": "domestic_politics" },
+          { "env_states": ["LEGITIMACY_MANAGEMENT"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.35, "priority": 75, "cap_group": "domestic_politics" },
+          { "env_states": ["DOMESTIC_SECURITY_SHOCK"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.65, "priority": 85, "cap_group": "security" },
+          { "env_states": ["DOMESTIC_SECURITY_SHOCK"], "target_behaviors": ["DOVISH"], "logit_bump": -0.20, "priority": 85, "cap_group": "security" }
+        ]
+      },
+  
+      "IRAN": {
+        "env_states": ["SANCTIONS_HIGH","NEGOTIATION_WINDOW","DOMESTIC_UNREST","PROXY_ESCALATION","ECONOMIC_CRISIS","RETALIATION_CYCLE","NATURAL_DISASTER"],
+        "base_behavior_transition": {
+          "DOVISH": [0.68,0.20,0.08,0.04],
+          "NEUTRAL": [0.04,0.72,0.12,0.12],
+          "OPPORTUNISTIC": [0.02,0.10,0.76,0.12],
+          "HAWKISH": [0.01,0.07,0.14,0.78]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["SANCTIONS_HIGH"], "target_behaviors": ["OPPORTUNISTIC","HAWKISH"], "logit_bump": 0.35, "priority": 70, "cap_group": "sanctions" },
+          { "env_states": ["NEGOTIATION_WINDOW"], "target_behaviors": ["DOVISH","OPPORTUNISTIC"], "logit_bump": 0.55, "priority": 80, "cap_group": "diplomacy" },
+          { "env_states": ["NEGOTIATION_WINDOW"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.35, "priority": 80, "cap_group": "diplomacy" },
+          { "env_states": ["DOMESTIC_UNREST"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.30, "priority": 75, "cap_group": "domestic_pressure" },
+          { "env_states": ["DOMESTIC_UNREST"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.20, "priority": 75, "cap_group": "domestic_pressure" },
+          { "env_states": ["PROXY_ESCALATION"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.65, "priority": 90, "cap_group": "security" },
+          { "env_states": ["ECONOMIC_CRISIS"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.40, "priority": 70, "cap_group": "macro" },
+          { "env_states": ["ECONOMIC_CRISIS"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.20, "priority": 70, "cap_group": "macro" },
+          { "env_states": ["RETALIATION_CYCLE"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.75, "priority": 95, "cap_group": "security" },
+          { "env_states": ["NATURAL_DISASTER"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": 0.40, "priority": 60, "cap_group": "domestic_shock" },
+          { "env_states": ["NATURAL_DISASTER"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.25, "priority": 60, "cap_group": "domestic_shock" }
+        ]
+      },
+  
+      "SAUDI_ARABIA": {
+        "env_states": ["OIL_COMFORT","OIL_STRESS","REGIONAL_ESCALATION","REFORM_DELIVERY_CRUNCH","INFRA_ATTACK_RISK","GREAT_POWER_HEDGING","DOMESTIC_STABILITY_SENSITIVE"],
+        "base_behavior_transition": {
+          "DOVISH": [0.78,0.16,0.04,0.02],
+          "NEUTRAL": [0.06,0.82,0.08,0.04],
+          "OPPORTUNISTIC": [0.03,0.12,0.78,0.07],
+          "HAWKISH": [0.02,0.14,0.12,0.72]
+        },
+        "behavior_rules_by_country": [
+          { "env_states": ["OIL_COMFORT"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.20, "priority": 30, "cap_group": "macro" },
+          { "env_states": ["OIL_STRESS"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL"], "logit_bump": 0.45, "priority": 70, "cap_group": "macro" },
+          { "env_states": ["REGIONAL_ESCALATION"], "target_behaviors": ["HAWKISH","OPPORTUNISTIC"], "logit_bump": 0.65, "priority": 90, "cap_group": "security" },
+          { "env_states": ["REFORM_DELIVERY_CRUNCH"], "target_behaviors": ["NEUTRAL","OPPORTUNISTIC"], "logit_bump": 0.30, "priority": 65, "cap_group": "domestic_politics" },
+          { "env_states": ["REFORM_DELIVERY_CRUNCH"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.20, "priority": 65, "cap_group": "domestic_politics" },
+          { "env_states": ["INFRA_ATTACK_RISK"], "target_behaviors": ["HAWKISH"], "logit_bump": 0.70, "priority": 95, "cap_group": "security" },
+          { "env_states": ["GREAT_POWER_HEDGING"], "target_behaviors": ["OPPORTUNISTIC","NEUTRAL","DOVISH"], "logit_bump": 0.35, "priority": 75, "cap_group": "strategy" },
+          { "env_states": ["DOMESTIC_STABILITY_SENSITIVE"], "target_behaviors": ["NEUTRAL","DOVISH"], "logit_bump": 0.45, "priority": 85, "cap_group": "domestic_pressure" },
+          { "env_states": ["DOMESTIC_STABILITY_SENSITIVE"], "target_behaviors": ["HAWKISH"], "logit_bump": -0.30, "priority": 85, "cap_group": "domestic_pressure" }
+        ]
+      }
+    }
+  }
+  

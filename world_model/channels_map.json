@@ -1,0 +1,45 @@
+{
+    "cap_group_state_map": {
+      "USA": {
+        "domestic_politics": ["ELECTION_CYCLE"],
+        "domestic_pressure": [],
+        "domestic_shock": ["NATURAL_DISASTER"]
+      },
+      "INDIA": {
+        "domestic_politics": ["ELECTION_CYCLE", "COALITION_TIGHT"],
+        "domestic_pressure": [],
+        "domestic_shock": []
+      },
+      "EU": {
+        "domestic_politics": ["ELECTION_WAVE", "UNITY_LOW"],
+        "domestic_pressure": ["MIGRATION_PRESSURE"],
+        "domestic_shock": []
+      },
+      "UK": {
+        "domestic_politics": ["ELECTION_CYCLE", "GOV_STABILITY_LOW"],
+        "domestic_pressure": [],
+        "domestic_shock": ["NATURAL_DISASTER"]
+      },
+      "CHINA": {
+        "domestic_politics": ["ELITE_SIGNALING"],
+        "domestic_pressure": ["SOCIAL_STABILITY_SENSITIVE"],
+        "domestic_shock": []
+      },
+      "RUSSIA": {
+        "domestic_politics": ["ELITE_COHESION_RISK", "LEGITIMACY_MANAGEMENT"],
+        "domestic_pressure": ["DOMESTIC_SECURITY_SHOCK"],
+        "domestic_shock": []
+      },
+      "IRAN": {
+        "domestic_politics": [],
+        "domestic_pressure": ["DOMESTIC_UNREST"],
+        "domestic_shock": ["NATURAL_DISASTER"]
+      },
+      "SAUDI_ARABIA": {
+        "domestic_politics": ["REFORM_DELIVERY_CRUNCH"],
+        "domestic_pressure": ["DOMESTIC_STABILITY_SENSITIVE"],
+        "domestic_shock": []
+      }
+    }
+  }
+  

@@ -1,0 +1,308 @@
+{
+  "coupling_rules_by_country": {
+    "USA": [
+      {
+        "source_country": "CHINA",
+        "source_states": ["TECH_TRADE_PRESSURE"],
+        "target_states": ["ECON_STRESS", "MARKET_VOLATILITY"],
+        "logit_bump": 0.7
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["FLASHPOINT_TENSION"],
+        "target_states": ["SECURITY_SHOCK", "ALLIANCE_COORDINATION"],
+        "logit_bump": 0.5
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["CONFLICT_ESCALATION"],
+        "target_states": ["ALLIANCE_COORDINATION", "SECURITY_SHOCK"],
+        "logit_bump": 0.6
+      },
+      {
+        "source_country": "IRAN",
+        "source_states": ["PROXY_ESCALATION", "RETALIATION_CYCLE"],
+        "target_states": ["SECURITY_SHOCK"],
+        "logit_bump": 0.5
+      },
+      {
+        "source_country": "SAUDI_ARABIA",
+        "source_states": ["OIL_STRESS"],
+        "target_states": ["ECON_STRESS", "MARKET_VOLATILITY"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "EU",
+        "source_states": ["ENERGY_SHOCK", "INDUSTRIAL_PRESSURE"],
+        "target_states": ["ECON_STRESS"],
+        "logit_bump": 0.25
+      },
+      {
+        "source_country": "UK",
+        "source_states": ["SECURITY_SHOCK"],
+        "target_states": ["ALLIANCE_COORDINATION"],
+        "logit_bump": 0.25
+      }
+    ],
+    "EU": [
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["CONFLICT_ESCALATION", "DOMESTIC_SECURITY_SHOCK"],
+        "target_states": ["HYBRID_THREAT", "UNITY_HIGH"],
+        "logit_bump": 0.8
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["SANCTIONS_ISOLATION_HIGH"],
+        "target_states": ["UNITY_HIGH"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["ALLIANCE_COORDINATION"],
+        "target_states": ["UNITY_HIGH"],
+        "logit_bump": 0.7
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["SECURITY_SHOCK"],
+        "target_states": ["HYBRID_THREAT", "UNITY_HIGH"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "IRAN",
+        "source_states": ["PROXY_ESCALATION", "RETALIATION_CYCLE"],
+        "target_states": ["ENERGY_SHOCK", "MIGRATION_PRESSURE"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "SAUDI_ARABIA",
+        "source_states": ["REGIONAL_ESCALATION", "INFRA_ATTACK_RISK"],
+        "target_states": ["ENERGY_SHOCK", "MIGRATION_PRESSURE"],
+        "logit_bump": 0.5
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["TECH_TRADE_PRESSURE"],
+        "target_states": ["INDUSTRIAL_PRESSURE"],
+        "logit_bump": 0.45
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["GROWTH_SLOWDOWN"],
+        "target_states": ["INDUSTRIAL_PRESSURE", "UNITY_LOW"],
+        "logit_bump": 0.25
+      },
+      {
+        "source_country": "UK",
+        "source_states": ["ELECTION_CYCLE", "GOV_STABILITY_LOW"],
+        "target_states": ["UNITY_LOW"],
+        "logit_bump": 0.2
+      }
+    ],
+    "UK": [
+      {
+        "source_country": "EU",
+        "source_states": ["ENERGY_SHOCK"],
+        "target_states": ["COST_OF_LIVING_STRESS"],
+        "logit_bump": 0.65
+      },
+      {
+        "source_country": "EU",
+        "source_states": ["MIGRATION_PRESSURE"],
+        "target_states": ["GOV_STABILITY_LOW"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["CONFLICT_ESCALATION"],
+        "target_states": ["SECURITY_SHOCK", "COST_OF_LIVING_STRESS"],
+        "logit_bump": 0.7
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["SECURITY_SHOCK", "ALLIANCE_COORDINATION"],
+        "target_states": ["SECURITY_SHOCK"],
+        "logit_bump": 0.45
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["TECH_TRADE_PRESSURE"],
+        "target_states": ["COST_OF_LIVING_STRESS", "TRADE_PUSH"],
+        "logit_bump": 0.3
+      }
+    ],
+    "CHINA": [
+      {
+        "source_country": "USA",
+        "source_states": ["ECON_STRESS", "MARKET_VOLATILITY"],
+        "target_states": ["GROWTH_SLOWDOWN", "SOCIAL_STABILITY_SENSITIVE"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["ALLIANCE_COORDINATION"],
+        "target_states": ["TECH_TRADE_PRESSURE", "DIPLOMATIC_OUTREACH"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "EU",
+        "source_states": ["UNITY_HIGH", "INDUSTRIAL_PRESSURE"],
+        "target_states": ["TECH_TRADE_PRESSURE"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "INDIA",
+        "source_states": ["BORDER_TENSION"],
+        "target_states": ["FLASHPOINT_TENSION", "ELITE_SIGNALING"],
+        "logit_bump": 0.8
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["CONFLICT_ESCALATION"],
+        "target_states": ["TECH_TRADE_PRESSURE"],
+        "logit_bump": 0.2
+      }
+    ],
+    "INDIA": [
+      {
+        "source_country": "CHINA",
+        "source_states": ["FLASHPOINT_TENSION"],
+        "target_states": ["BORDER_TENSION"],
+        "logit_bump": 0.9
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["ELITE_SIGNALING"],
+        "target_states": ["BORDER_TENSION"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "SAUDI_ARABIA",
+        "source_states": ["OIL_STRESS", "REGIONAL_ESCALATION"],
+        "target_states": ["FOOD_INFLATION"],
+        "logit_bump": 0.45
+      },
+      {
+        "source_country": "IRAN",
+        "source_states": ["PROXY_ESCALATION", "RETALIATION_CYCLE"],
+        "target_states": ["FOOD_INFLATION", "GREAT_POWER_BALANCING"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["CONFLICT_ESCALATION"],
+        "target_states": ["GREAT_POWER_BALANCING", "FOOD_INFLATION"],
+        "logit_bump": 0.5
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["SECURITY_SHOCK"],
+        "target_states": ["GREAT_POWER_BALANCING"],
+        "logit_bump": 0.35
+      }
+    ],
+    "SAUDI_ARABIA": [
+      {
+        "source_country": "IRAN",
+        "source_states": ["PROXY_ESCALATION", "RETALIATION_CYCLE"],
+        "target_states": ["REGIONAL_ESCALATION", "INFRA_ATTACK_RISK"],
+        "logit_bump": 1.0
+      },
+      {
+        "source_country": "IRAN",
+        "source_states": ["NEGOTIATION_WINDOW"],
+        "target_states": ["REGIONAL_ESCALATION"],
+        "logit_bump": -0.2
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["CONFLICT_ESCALATION"],
+        "target_states": ["OIL_COMFORT", "GREAT_POWER_HEDGING"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["GROWTH_SLOWDOWN"],
+        "target_states": ["OIL_STRESS"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["SECURITY_SHOCK", "ALLIANCE_COORDINATION"],
+        "target_states": ["GREAT_POWER_HEDGING", "DOMESTIC_STABILITY_SENSITIVE"],
+        "logit_bump": 0.25
+      }
+    ],
+    "IRAN": [
+      {
+        "source_country": "USA",
+        "source_states": ["ALLIANCE_COORDINATION"],
+        "target_states": ["SANCTIONS_HIGH"],
+        "logit_bump": 0.65
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["SECURITY_SHOCK"],
+        "target_states": ["RETALIATION_CYCLE", "PROXY_ESCALATION"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "EU",
+        "source_states": ["UNITY_HIGH"],
+        "target_states": ["SANCTIONS_HIGH"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "SAUDI_ARABIA",
+        "source_states": ["REGIONAL_ESCALATION", "INFRA_ATTACK_RISK"],
+        "target_states": ["PROXY_ESCALATION", "RETALIATION_CYCLE"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "RUSSIA",
+        "source_states": ["SANCTIONS_ISOLATION_HIGH"],
+        "target_states": ["NEGOTIATION_WINDOW"],
+        "logit_bump": 0.2
+      }
+    ],
+    "RUSSIA": [
+      {
+        "source_country": "EU",
+        "source_states": ["UNITY_HIGH"],
+        "target_states": ["SANCTIONS_ISOLATION_HIGH"],
+        "logit_bump": 0.75
+      },
+      {
+        "source_country": "USA",
+        "source_states": ["ALLIANCE_COORDINATION"],
+        "target_states": ["SANCTIONS_ISOLATION_HIGH"],
+        "logit_bump": 0.65
+      },
+      {
+        "source_country": "SAUDI_ARABIA",
+        "source_states": ["OIL_COMFORT"],
+        "target_states": ["ENERGY_REVENUE_SURGE"],
+        "logit_bump": 0.35
+      },
+      {
+        "source_country": "CHINA",
+        "source_states": ["GROWTH_SLOWDOWN"],
+        "target_states": ["ENERGY_REVENUE_STRESS"],
+        "logit_bump": 0.55
+      },
+      {
+        "source_country": "IRAN",
+        "source_states": ["RETALIATION_CYCLE", "PROXY_ESCALATION"],
+        "target_states": ["LEGITIMACY_MANAGEMENT"],
+        "logit_bump": 0.25
+      },
+      {
+        "source_country": "UK",
+        "source_states": ["SECURITY_SHOCK"],
+        "target_states": ["CONFLICT_ESCALATION"],
+        "logit_bump": 0.15
+      }
+    ]
+  }
+}
