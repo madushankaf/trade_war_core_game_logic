@@ -48,7 +48,9 @@ with open(_JSON_PATH_FOR_LEADER_BEHAVIOURS, "r") as f:
     _JSON_DATA_FOR_LEADER_BEHAVIOURS = json.load(f)
 
 LEADER_BEHAVIOURS = _JSON_DATA_FOR_LEADER_BEHAVIOURS["countries"]
-logger.info(f"Loaded leader behaviours: {LEADER_BEHAVIOURS}")
+BEHAVIOR_ORDER = _JSON_DATA_FOR_LEADER_BEHAVIOURS.get("behavior_order", ["DOVISH", "NEUTRAL", "OPPORTUNISTIC", "HAWKISH"])
+logger.info(f"Loaded leader behaviours for {len(LEADER_BEHAVIOURS)} countries: {list(LEADER_BEHAVIOURS.keys())}")
+logger.info(f"Behavior order: {BEHAVIOR_ORDER}")
 
 def get_transition_matrix(current_state: str, country: str) -> np.ndarray:
     """
@@ -149,7 +151,8 @@ def calculate_world_order(no_of_weeks: int, seed: int = 42) -> list[dict]:
         country_states = COUNTRIES[country_name]["states"]
         # Randomly select initial state for each country
         initial_state = np.random.choice(country_states)
-        world_order[country_name] = initial_state
+        initial_behaviour = sample_categorical(BEHAVIOR_ORDER, get_leader_behaviour_probabilities(country_name, "DOVISH", initial_state))
+        world_order[country_name] = {"state": initial_state, "behaviour": initial_behaviour}
     
     logger.info(f"Initialized world order with {len(world_order)} countries: {list(world_order.keys())}")
     logger.debug(f"Initial states: {world_order}")
@@ -157,12 +160,13 @@ def calculate_world_order(no_of_weeks: int, seed: int = 42) -> list[dict]:
     trajectory = [world_order.copy()]
 
     for week in range(no_of_weeks):
-        next_world_order = {}
+        next_world_order = world_order.copy()
         state_transitions = []
         
         for country_name in COUNTRIES.keys():
             # Get current state of this country
-            current_state = world_order[country_name]
+            current_state = world_order[country_name]["state"]
+            current_behaviour = world_order[country_name]["behaviour"]
             country_states = COUNTRIES[country_name]["states"]
             
             # Calculate coupling probabilities based on current state
@@ -170,8 +174,15 @@ def calculate_world_order(no_of_weeks: int, seed: int = 42) -> list[dict]:
             
             # Sample next state
             next_state = sample_categorical(country_states, coupled_probabilities)
-            next_world_order[country_name] = next_state
+            next_world_order[country_name]["state"] = next_state
+
+            # Calculate leader behaviour probabilities based on current state
+            leader_behaviour_probabilities = get_leader_behaviour_probabilities(country_name, current_behaviour, current_state)
+            next_behaviour = sample_categorical(BEHAVIOR_ORDER, leader_behaviour_probabilities)
+            next_world_order[country_name]["behaviour"] = next_behaviour
             
+            if current_behaviour != next_behaviour:
+                state_transitions.append(f"{country_name}: {current_behaviour} -> {next_behaviour}")
             if current_state != next_state:
                 state_transitions.append(f"{country_name}: {current_state} -> {next_state}")
         
@@ -193,6 +204,70 @@ def run_length_geometric(q, max_weeks=260):
             break
     return t
 
+def get_leader_behaviour_probabilities(country: str, current_behaviour: str, current_world_state: str) -> np.ndarray:
+    """
+    Get the leader behaviour probabilities for a given country and current behaviour.
+    
+    Args:
+        country: Country name
+        current_behaviour: Current behavior (e.g., "DOVISH", "NEUTRAL", "OPPORTUNISTIC", "HAWKISH")
+        current_world_state: Current world/environment state for this country
+        
+    Returns:
+        Normalized probability distribution over behaviors as a numpy array
+        Shape: (num_behaviors,) - probabilities sum to 1.0
+    """
+    if country not in LEADER_BEHAVIOURS:
+        logger.error(f"Country {country} not found in leader behaviours. Available countries: {list(LEADER_BEHAVIOURS.keys())}")
+        raise ValueError(f"Country {country} not found in {LEADER_BEHAVIOURS}")
+
+    # Check key name - JSON uses "base_behavior_transition" (American spelling)
+    base_transition_key = "base_behavior_transition"  # JSON uses American spelling
+    if base_transition_key not in LEADER_BEHAVIOURS[country]:
+        base_transition_key = "base_behaviour_transition"  # Try British spelling as fallback
+    
+    if current_behaviour not in LEADER_BEHAVIOURS[country][base_transition_key]:
+        available_behaviours = list(LEADER_BEHAVIOURS[country][base_transition_key].keys())
+        logger.error(f"Behavior {current_behaviour} not found for country {country}. Available behaviors: {available_behaviours}")
+        raise KeyError(f"Behavior {current_behaviour} not found for country {country}")
+
+    # Get base probabilities for current behavior
+    base_probabilities = LEADER_BEHAVIOURS[country][base_transition_key][current_behaviour]
+    base_probabilities = np.array(base_probabilities)
+    logits = np.log(np.maximum(base_probabilities, 1e-12))
+    
+    # Create behavior name to index mapping
+    behavior_to_idx = {behavior: idx for idx, behavior in enumerate(BEHAVIOR_ORDER)}
+    
+    # Apply behavior rules based on current world state
+    # JSON uses "behavior_rules_by_country" (American spelling)
+    rules_key = "behavior_rules_by_country"
+    if rules_key not in LEADER_BEHAVIOURS[country]:
+        rules_key = "behaviour_rules_by_country"  # Try British spelling as fallback
+    behaviour_rules = LEADER_BEHAVIOURS[country][rules_key]
+    rules_applied = 0
+    for rule in behaviour_rules:
+        if current_world_state in rule["env_states"]:
+            # JSON uses "target_behaviors" (American spelling)
+            target_behaviours = rule.get("target_behaviors", rule.get("target_behaviours", []))
+            logit_bump = rule["logit_bump"]
+            for behaviour in target_behaviours:
+                if behaviour in behavior_to_idx:
+                    j = behavior_to_idx[behaviour]
+                    logits[j] += logit_bump
+            rules_applied += 1
+            logger.debug(f"Applied behavior rule for {country}/{current_behaviour}/{current_world_state}: bump={logit_bump}, targets={target_behaviours}")
+    
+    if rules_applied > 0:
+        logger.debug(f"Behavior probabilities calculated for {country}/{current_behaviour}/{current_world_state}: {rules_applied} rule(s) applied")
+    else:
+        logger.debug(f"No behavior rules matched for {country}/{current_behaviour}/{current_world_state}, using base probabilities")
+    
+    behaviour_probs = softmax(logits)
+    logger.debug(f"Behavior probabilities for {country}/{current_behaviour}/{current_world_state}: sum={behaviour_probs.sum():.6f}")
+    return behaviour_probs
+
+    
 
 def simulate_world_using_monte_carlo( no_of_runs: int = 1000, q: float = 0.0769, max_weeks: int = 260) -> tuple:
     """
@@ -233,8 +308,9 @@ def simulate_world_using_monte_carlo( no_of_runs: int = 1000, q: float = 0.0769,
         country_state_to_idx[country_name] = {state: idx for idx, state in enumerate(states)}
     
     # Initialize count matrices
-    # Shape: (time_steps, num_countries, max_num_states)
-    counts_per_country_state = np.zeros((max_weeks + 1, len(country_names), max_num_states))
+    # Shape: (time_steps, num_countries, max_num_states, num_behaviors)
+    num_behaviors = len(BEHAVIOR_ORDER)
+    counts_per_country_state = np.zeros((max_weeks + 1, len(country_names), max_num_states, num_behaviors))
     logger.debug(f"Initialized count matrix: shape={counts_per_country_state.shape}")
     
     # Run Monte Carlo simulations
@@ -249,10 +325,13 @@ def simulate_world_using_monte_carlo( no_of_runs: int = 1000, q: float = 0.0769,
         logger.info(f"Starting Monte Carlo simulation: {no_of_weeks} weeks, {no_of_runs} runs")
         trajectory = calculate_world_order(no_of_weeks, seed=run+1)
         for t, world_order in enumerate(trajectory):
-            for country_name, state in world_order.items():
+            for country_name, country_data in world_order.items():
+                state = country_data["state"]
+                behaviour = country_data["behaviour"]   
                 country_idx = country_to_idx[country_name]
                 state_idx = country_state_to_idx[country_name][state]
-                counts_per_country_state[t, country_idx, state_idx] += 1
+                behaviour_idx = BEHAVIOR_ORDER.index(behaviour)
+                counts_per_country_state[t, country_idx, state_idx, behaviour_idx] += 1
     
     logger.info(f"Completed all {no_of_runs} Monte Carlo runs. Normalizing distributions...")
     
@@ -261,20 +340,22 @@ def simulate_world_using_monte_carlo( no_of_runs: int = 1000, q: float = 0.0769,
     final_distribution_per_country_state = np.zeros_like(counts_per_country_state, dtype=np.float64)
     
     normalization_errors = 0
-    for t in range(no_of_weeks + 1):
+    for t in range(max_weeks + 1):
         for country_idx, country_name in enumerate(country_names):
             # Get counts for this country at this time step
-            country_counts = counts_per_country_state[t, country_idx, :]
+            # Shape: (max_num_states, num_behaviors)
+            country_counts = counts_per_country_state[t, country_idx, :, :]
             num_states = len(COUNTRIES[country_name]["states"])
             
-            # Normalize only the relevant states for this country
-            total_count = country_counts[:num_states].sum()
+            # Normalize only the relevant states for this country over all behaviors
+            # Sum over both states and behaviors for this country
+            total_count = country_counts[:num_states, :].sum()
             if total_count > 0:
-                # Normalize so probabilities sum to 1.0 for this country
-                final_distribution_per_country_state[t, country_idx, :num_states] = country_counts[:num_states] / total_count
+                # Normalize so probabilities sum to 1.0 for this country (over all state-behavior combinations)
+                final_distribution_per_country_state[t, country_idx, :num_states, :] = country_counts[:num_states, :] / total_count
                 
                 # Verify normalization
-                prob_sum = final_distribution_per_country_state[t, country_idx, :num_states].sum()
+                prob_sum = final_distribution_per_country_state[t, country_idx, :num_states, :].sum()
                 if not np.isclose(prob_sum, 1.0, atol=1e-6):
                     logger.warning(f"Normalization issue at t={t}, country={country_name}: sum={prob_sum:.6f} (expected 1.0)")
                     normalization_errors += 1
